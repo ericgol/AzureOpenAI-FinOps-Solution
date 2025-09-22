@@ -1,0 +1,151 @@
+// Main deployment template for Azure OpenAI FinOps Solution
+targetScope = 'subscription'
+
+@description('Environment name (dev, staging, prod)')
+param environment string = 'dev'
+
+@description('Primary Azure region')
+param location string = 'East US 2'
+
+@description('Project name prefix')
+param projectName string = 'finops-aoai'
+
+@description('Unique suffix for resource names')
+param uniqueSuffix string = uniqueString(subscription().subscriptionId, projectName, environment)
+
+@description('Resource group name')
+param resourceGroupName string = '${projectName}-${environment}-rg'
+
+@description('Tags to apply to all resources')
+param tags object = {
+  Environment: environment
+  Project: 'Azure-OpenAI-FinOps'
+  ManagedBy: 'Bicep'
+  CostCenter: 'IT-FinOps'
+}
+
+@description('APIM SKU (Developer or Premium)')
+@allowed(['Developer', 'Premium'])
+param apimSku string = 'Developer'
+
+@description('Enable private networking for production')
+param enablePrivateNetworking bool = environment == 'prod'
+
+@description('Cost Management scope (subscription or resource group)')
+param costManagementScope string = subscription().id
+
+// Create resource group
+resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
+  name: resourceGroupName
+  location: location
+  tags: tags
+}
+
+// Deploy Log Analytics Workspace
+module logAnalytics 'modules/log-analytics.bicep' = {
+  scope: rg
+  name: 'deploy-log-analytics'
+  params: {
+    workspaceName: '${projectName}-${environment}-law-${uniqueSuffix}'
+    location: location
+    tags: tags
+    retentionInDays: environment == 'prod' ? 90 : 30
+    dailyQuotaGb: environment == 'prod' ? 10 : 1
+  }
+}
+
+// Deploy Application Insights
+module appInsights 'modules/application-insights.bicep' = {
+  scope: rg
+  name: 'deploy-app-insights'
+  params: {
+    appInsightsName: '${projectName}-${environment}-ai-${uniqueSuffix}'
+    location: location
+    tags: tags
+    logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
+  }
+}
+
+// Deploy Storage Account
+module storage 'modules/storage-account.bicep' = {
+  scope: rg
+  name: 'deploy-storage'
+  params: {
+    storageAccountName: '${projectName}${environment}sa${uniqueSuffix}'
+    location: location
+    tags: tags
+    environment: environment
+    enablePrivateEndpoint: enablePrivateNetworking
+  }
+}
+
+// Deploy Virtual Network (for private networking)
+module networking 'modules/networking.bicep' = if (enablePrivateNetworking) {
+  scope: rg
+  name: 'deploy-networking'
+  params: {
+    vnetName: '${projectName}-${environment}-vnet-${uniqueSuffix}'
+    location: location
+    tags: tags
+  }
+}
+
+// Deploy API Management
+module apim 'modules/api-management.bicep' = {
+  scope: rg
+  name: 'deploy-apim'
+  params: {
+    apimName: '${projectName}-${environment}-apim-${uniqueSuffix}'
+    location: location
+    tags: tags
+    sku: apimSku
+    logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
+    appInsightsInstrumentationKey: appInsights.outputs.instrumentationKey
+    subnetId: enablePrivateNetworking ? networking.outputs.apimSubnetId : ''
+    enablePrivateNetworking: enablePrivateNetworking
+  }
+}
+
+// Deploy Azure Function App
+module functionApp 'modules/function-app.bicep' = {
+  scope: rg
+  name: 'deploy-function-app'
+  params: {
+    functionAppName: '${projectName}-${environment}-func-${uniqueSuffix}'
+    location: location
+    tags: tags
+    storageAccountName: storage.outputs.storageAccountName
+    appInsightsInstrumentationKey: appInsights.outputs.instrumentationKey
+    logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
+    costManagementScope: costManagementScope
+    environment: environment
+    subnetId: enablePrivateNetworking ? networking.outputs.functionSubnetId : ''
+  }
+}
+
+// Deploy Key Vault for secrets management
+module keyVault 'modules/key-vault.bicep' = {
+  scope: rg
+  name: 'deploy-key-vault'
+  params: {
+    keyVaultName: '${projectName}-${environment}-kv-${uniqueSuffix}'
+    location: location
+    tags: tags
+    functionAppPrincipalId: functionApp.outputs.functionAppPrincipalId
+    enablePrivateEndpoint: enablePrivateNetworking
+    subnetId: enablePrivateNetworking ? networking.outputs.privateEndpointSubnetId : ''
+  }
+}
+
+// Outputs for reference by other deployments or scripts
+output resourceGroupName string = rg.name
+output logAnalyticsWorkspaceId string = logAnalytics.outputs.workspaceId
+output logAnalyticsWorkspaceName string = logAnalytics.outputs.workspaceName
+output appInsightsInstrumentationKey string = appInsights.outputs.instrumentationKey
+output apimName string = apim.outputs.apimName
+output apimGatewayUrl string = apim.outputs.gatewayUrl
+output functionAppName string = functionApp.outputs.functionAppName
+output storageAccountName string = storage.outputs.storageAccountName
+output keyVaultName string = keyVault.outputs.keyVaultName
+output environment string = environment
+output location string = location

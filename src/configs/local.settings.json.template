@@ -1,0 +1,44 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "FUNCTIONS_EXTENSION_VERSION": "~4",
+    
+    "LOG_ANALYTICS_WORKSPACE_ID": "YOUR_LOG_ANALYTICS_WORKSPACE_ID",
+    "LOG_ANALYTICS_WORKSPACE_KEY": "",
+    "COST_MANAGEMENT_SCOPE": "/subscriptions/YOUR_SUBSCRIPTION_ID",
+    "STORAGE_ACCOUNT_NAME": "YOUR_STORAGE_ACCOUNT_NAME",
+    "STORAGE_ACCOUNT_KEY": "",
+    
+    "APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=YOUR_INSTRUMENTATION_KEY;IngestionEndpoint=https://eastus2-0.in.applicationinsights.azure.com/",
+    
+    "ENVIRONMENT": "dev",
+    "DATA_COLLECTION_INTERVAL_MINUTES": "6",
+    "LOOKBACK_HOURS": "1",
+    "MAX_RETRY_ATTEMPTS": "3",
+    
+    "FINOPS_DATA_CONTAINER": "finops-data",
+    "RAW_TELEMETRY_CONTAINER": "raw-telemetry",
+    "COST_DATA_CONTAINER": "cost-data",
+    
+    "DEFAULT_ALLOCATION_METHOD": "proportional",
+    "ENABLE_USER_MAPPING": "true",
+    "ENABLE_STORE_MAPPING": "true",
+    
+    "BATCH_SIZE": "1000",
+    "MAX_CONCURRENT_REQUESTS": "10",
+    "LOG_LEVEL": "INFO",
+    "ENABLE_DEBUG_LOGGING": "false",
+    
+    "APIM_NAME": "YOUR_APIM_NAME",
+    "APIM_RESOURCE_GROUP": "YOUR_RESOURCE_GROUP",
+    "KEY_VAULT_URL": "https://YOUR_KEY_VAULT.vault.azure.net/"
+  },
+  "Host": {
+    "LocalHttpPort": 7071,
+    "CORS": "*",
+    "CORSCredentials": false
+  },
+  "ConnectionStrings": {}
+}
