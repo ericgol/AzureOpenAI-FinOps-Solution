@@ -55,8 +55,8 @@ Apply this policy to your OpenAI API operations.
             dimensions["store-id"] = (string)context.Variables["store-id"];
             dimensions["api-version"] = (string)context.Variables["api-version"];
             dimensions["deployment-id"] = (string)context.Variables["deployment-id"];
-            dimensions["subscription-id"] = context.Subscription?.Id ?? "";
-            dimensions["product-id"] = context.Product?.Id ?? "";
+            dimensions["subscription-id"] = (string)context.Subscription.Id;
+            dimensions["product-id"] = (string)context.Product.Id;
             dimensions["api-id"] = context.Api.Id;
             dimensions["operation-id"] = context.Operation.Id;
             return dimensions.ToString();
@@ -86,7 +86,7 @@ Apply this policy to your OpenAI API operations.
             }
             catch (Exception ex) {
                 // Log parsing error but don't fail the request
-                context.Trace.TraceError($"Error parsing token usage: {ex.Message}");
+                context.Trace.TraceError($"Error parsing tokens utilized: {ex.Message}");
             }
             return tokensUsed;
         }" />
@@ -102,7 +102,10 @@ Apply this policy to your OpenAI API operations.
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) {
+                // Log parsing error but don't fail the request
+                context.Trace.TraceError($"Error parsing prompt token usage: {ex.Message}");
+            }
             return promptTokens;
         }" />
         
@@ -116,7 +119,10 @@ Apply this policy to your OpenAI API operations.
                     }
                 }
             }
-            catch { }
+            catch (Exception ex) {
+                // Log parsing error but don't fail the request
+                context.Trace.TraceError($"Error parsing completion token usage: {ex.Message}");
+            }
             return completionTokens;
         }" />
         
@@ -131,7 +137,10 @@ Apply this policy to your OpenAI API operations.
                     }
                 }
             }
-            catch { }
+              catch (Exception ex) {
+                // Log parsing error but don't fail the request
+                context.Trace.TraceError($"Error parsing model name: {ex.Message}");
+            }
             return modelName;
         }" />
         
@@ -147,7 +156,7 @@ Apply this policy to your OpenAI API operations.
                     new JProperty("apiName", context.Api.Name),
                     new JProperty("operationName", context.Operation.Name),
                     new JProperty("method", context.Request.Method),
-                    new JProperty("url", context.Request.Url.ToString()),
+                    new JProperty("url", (string) context.Request.Url)),
                     new JProperty("statusCode", context.Response.StatusCode),
                     new JProperty("responseTime", context.Variables["response-time"]),
                     new JProperty("tokensUsed", context.Variables["tokens-used"]),
@@ -156,11 +165,11 @@ Apply this policy to your OpenAI API operations.
                     new JProperty("modelName", context.Variables["model-name"]),
                     new JProperty("apiVersion", context.Variables["api-version"]),
                     new JProperty("deploymentId", context.Variables["deployment-id"]),
-                    new JProperty("subscriptionId", context.Subscription?.Id ?? ""),
-                    new JProperty("productId", context.Product?.Id ?? ""),
+                    new JProperty("subscriptionId", context.Subscription.Id),
+                    new JProperty("productId", context.Product.Id),
                     new JProperty("resourceRegion", context.Deployment.Region),
-                    new JProperty("requestSize", context.Request.Body?.As<string>()?.Length ?? 0),
-                    new JProperty("responseSize", context.Response.Body?.As<string>()?.Length ?? 0)
+                    new JProperty("requestSize", context.Request.Body.As<string>().Length),
+                    new JProperty("responseSize", context.Response.Body.As<string>().Length)
                 );
                 
                 return telemetryData.ToString();
@@ -200,17 +209,17 @@ Apply this policy to your OpenAI API operations.
                     new JProperty("apiName", context.Api.Name),
                     new JProperty("operationName", context.Operation.Name),
                     new JProperty("method", context.Request.Method),
-                    new JProperty("url", context.Request.Url.ToString()),
-                    new JProperty("statusCode", context.Response?.StatusCode ?? 500),
+                    new JProperty("url", (string) context.Request.Url),
+                    new JProperty("statusCode", context.Response.StatusCode),
                     new JProperty("responseTime", (int)(DateTime.UtcNow - (DateTime)context.Variables["request-timestamp"]).TotalMilliseconds),
-                    new JProperty("errorMessage", context.LastError?.Message ?? "Unknown error"),
-                    new JProperty("errorSource", context.LastError?.Source ?? ""),
+                    new JProperty("errorMessage", context.LastError.Message ?? "Unknown error"),
+                    new JProperty("errorSource", context.LastError.Source ?? ""),
                     new JProperty("subscriptionId", context.Subscription?.Id ?? ""),
-                    new JProperty("productId", context.Product?.Id ?? "")
+                    new JProperty("productId", context.Product.Id)
                 );
                 
                 return errorData.ToString();
             }
         </log-to-eventhub>
     </on-error>
-</policies>
+</policies>  
