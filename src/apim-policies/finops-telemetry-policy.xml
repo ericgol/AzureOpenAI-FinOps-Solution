@@ -88,7 +88,7 @@ Apply this policy to your OpenAI API operations.
             }
             catch (Exception ex) {
                 // Log parsing error but don't fail the request
-                context.Trace.TraceError($"Error parsing tokens utilized: {ex.Message}");
+                context.Trace($"Error parsing tokens utilized: {ex.Message}");
             }
             return tokensUsed;
         }" />
@@ -106,7 +106,7 @@ Apply this policy to your OpenAI API operations.
             }
             catch (Exception ex) {
                 // Log parsing error but don't fail the request
-                context.Trace.TraceError($"Error parsing prompt token usage: {ex.Message}");
+                context.Trace($"Error parsing prompt token usage: {ex.Message}");
             }
             return promptTokens;
         }" />
@@ -123,7 +123,7 @@ Apply this policy to your OpenAI API operations.
             }
             catch (Exception ex) {
                 // Log parsing error but don't fail the request
-                context.Trace.TraceError($"Error parsing completion token usage: {ex.Message}");
+                context.Trace($"Error parsing completion token usage: {ex.Message}");
             }
             return completionTokens;
         }" />
@@ -141,12 +141,13 @@ Apply this policy to your OpenAI API operations.
             }
               catch (Exception ex) {
                 // Log parsing error but don't fail the request
-                context.Trace.TraceError($"Error parsing model name: {ex.Message}");
+                context.Trace($"Error parsing model name: {ex.Message}");
             }
             return modelName;
         }" />
         
         <!-- Log telemetry to EventHub -->
+        <!-- Logger must be registered with APIM prior to policy save -->
         <log-to-eventhub logger-id="finops-eventhub-logger" partition-id="0">
             @{
                 var telemetryData = new JObject(
@@ -158,7 +159,7 @@ Apply this policy to your OpenAI API operations.
                     new JProperty("apiName", context.Api.Name),
                     new JProperty("operationName", context.Operation.Name),
                     new JProperty("method", context.Request.Method),
-                    new JProperty("url", (string)context.Request.Url),
+                    new JProperty("url", context.Request.Url),
                     new JProperty("statusCode", context.Response.StatusCode),
                     new JProperty("responseTime", context.Variables["response-time"]),
                     new JProperty("tokensUsed", context.Variables["tokens-used"]),
@@ -170,8 +171,8 @@ Apply this policy to your OpenAI API operations.
                     new JProperty("subscriptionId", context.Subscription?.Id ?? ""),
                     new JProperty("productId", context.Product?.Id ?? ""),
                     new JProperty("resourceRegion", context.Deployment.Region),
-                    new JProperty("requestSize", context.Request.Body?.As<string>(PreserveContent: true)?.Length ?? 0),
-                    new JProperty("responseSize", context.Response.Body?.As<string>(PreserveContent: true)?.Length ?? 0)
+                    new JProperty("requestSize", context.Request.Body?.As<string>(preserveContent: true)?.Length ?? 0),
+                    new JProperty("responseSize", context.Response.Body?.As<string>(preserveContent: true)?.Length ?? 0)
                 );
                 
                 return telemetryData.ToString();
@@ -192,7 +193,7 @@ Apply this policy to your OpenAI API operations.
         </set-header>
         
         <set-header name="x-finops-tokens-used" exists-action="override">
-            <value>@(context.Variables["tokens-used"].ToString())</value>
+            <value>@((string)context.Variables["tokens-used"])</value>
         </set-header>
     </outbound>
     
@@ -200,6 +201,7 @@ Apply this policy to your OpenAI API operations.
         <base />
         
         <!-- Log errors with context for debugging -->
+        <!-- Logger must be registered with APIM prior to policy save -->
         <log-to-eventhub logger-id="finops-eventhub-logger" partition-id="0">
             @{
                 var errorData = new JObject(
@@ -211,7 +213,7 @@ Apply this policy to your OpenAI API operations.
                     new JProperty("apiName", context.Api.Name),
                     new JProperty("operationName", context.Operation.Name),
                     new JProperty("method", context.Request.Method),
-                    new JProperty("url", (string)context.Request.Url),
+                    new JProperty("url", context.Request.Url),
                     new JProperty("statusCode", context.Response?.StatusCode ?? 500),
                     new JProperty("responseTime", (int)(DateTime.UtcNow - (DateTime)context.Variables["request-timestamp"]).TotalMilliseconds),
                     new JProperty("errorMessage", context.LastError?.Message ?? "Unknown error"),
