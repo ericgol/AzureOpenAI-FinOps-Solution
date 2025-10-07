@@ -203,6 +203,26 @@ CALCULATE([Total Cost], CorrelatedData[ShiftCategory] = "Evening")
 
 Night Shift Cost = 
 CALCULATE([Total Cost], CorrelatedData[ShiftCategory] = "Night")
+
+-- GPT-5 Model Analysis
+GPT-5 Cost = 
+CALCULATE([Total Cost], CorrelatedData[ModelFamily] IN {"GPT-5", "GPT-5-Turbo", "GPT-5-Preview"})
+
+GPT-5 vs GPT-4 Cost Ratio = 
+DIVIDE([GPT-5 Cost], CALCULATE([Total Cost], CorrelatedData[ModelFamily] LIKE "GPT-4*"), 0)
+
+GPT-5 Token Efficiency = 
+DIVIDE(
+    CALCULATE([Total Tokens], CorrelatedData[ModelFamily] LIKE "GPT-5*"),
+    CALCULATE([Total Cost], CorrelatedData[ModelFamily] LIKE "GPT-5*"),
+    0
+)
+
+-- Model Comparison Matrix
+Model Performance Score = 
+VAR TokensPerDollar = DIVIDE([Total Tokens], [Total Cost], 0)
+VAR AvgResponseTime = AVERAGE(CorrelatedData[AvgResponseTime])
+RETURN TokensPerDollar / (AvgResponseTime / 1000) -- Tokens per dollar per second
 ```
 
 ---
@@ -214,7 +234,7 @@ CALCULATE([Total Cost], CorrelatedData[ShiftCategory] = "Night")
 **Key Visuals**:
 1. **Cost Trend** (Line Chart): Total cost over time
 2. **Store Performance** (Map): Cost by store location
-3. **Model Usage** (Pie Chart): Cost breakdown by AI model (GPT-4, GPT-3.5)
+3. **Model Usage** (Pie Chart): Cost breakdown by AI model (GPT-5, GPT-4, GPT-3.5)
 4. **Top Devices** (Bar Chart): Highest cost devices
 5. **KPI Cards**: Total cost, total tokens, cost per token
 

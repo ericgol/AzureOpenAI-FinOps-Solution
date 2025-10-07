@@ -30,7 +30,7 @@ This document describes the schema for the main correlated data table that Power
 | Field Name | Data Type | Description | Example |
 |------------|-----------|-------------|---------|
 | `CostType` | String | Type of cost (Input Tokens, Output Tokens, etc.) | `"Input Tokens"` |
-| `ModelFamily` | String | AI model family (GPT-4, GPT-3.5, etc.) | `"GPT-4"` |
+| `ModelFamily` | String | AI model family (GPT-5, GPT-4, GPT-3.5, etc.) | `"GPT-5"` |
 | `MeterName` | String | Azure meter name | `"GPT-4 Input Tokens"` |
 | `AllocationMethod` | String | Method used for cost allocation | `"proportional"` |
 | `CostPerToken` | Decimal | Cost per token for this allocation | `0.004375` |
@@ -107,8 +107,8 @@ All records must have:
     "AvgResponseTime": 185.5,
     "Currency": "USD",
     "CostType": "Input Tokens",
-    "ModelFamily": "GPT-4",
-    "MeterName": "GPT-4 Input Tokens", 
+    "ModelFamily": "GPT-5",
+    "MeterName": "GPT-5 Input Tokens",
     "AllocationMethod": "proportional",
     "CostPerToken": 0.004375,
     "CostPerApiCall": 0.35,

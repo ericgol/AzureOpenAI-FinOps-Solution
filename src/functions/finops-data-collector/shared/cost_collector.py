@@ -138,8 +138,18 @@ class CostCollector:
                                 "Fine-tuning Inference",
                                 "GPT-4 Input Tokens",
                                 "GPT-4 Output Tokens",
+                                "GPT-4o Input Tokens",
+                                "GPT-4o Output Tokens",
+                                "GPT-4 Turbo Input Tokens",
+                                "GPT-4 Turbo Output Tokens",
                                 "GPT-3.5-Turbo Input Tokens",
-                                "GPT-3.5-Turbo Output Tokens"
+                                "GPT-3.5-Turbo Output Tokens",
+                                "GPT-5 Input Tokens",
+                                "GPT-5 Output Tokens",
+                                "GPT-5-Turbo Input Tokens",
+                                "GPT-5-Turbo Output Tokens",
+                                "GPT-5-Preview Input Tokens",
+                                "GPT-5-Preview Output Tokens"
                             ]
                         }
                     }
@@ -289,12 +299,24 @@ class CostCollector:
         elif 'training' in meter_name:
             cost_type = 'Training'
         
-        # Determine model family
+        # Determine model family (check most specific first)
         model_family = 'Unknown'
-        if 'gpt-4' in meter_name:
-            model_family = 'GPT-4'
+        if 'gpt-5' in meter_name:
+            if 'preview' in meter_name:
+                model_family = 'GPT-5-Preview'
+            elif 'turbo' in meter_name:
+                model_family = 'GPT-5-Turbo'
+            else:
+                model_family = 'GPT-5'
+        elif 'gpt-4' in meter_name:
+            if 'gpt-4o' in meter_name:
+                model_family = 'GPT-4o'
+            elif 'turbo' in meter_name:
+                model_family = 'GPT-4-Turbo'
+            else:
+                model_family = 'GPT-4'
         elif 'gpt-3.5' in meter_name or 'gpt-35' in meter_name:
-            model_family = 'GPT-3.5'
+            model_family = 'GPT-3.5-Turbo'
         elif 'davinci' in meter_name:
             model_family = 'Davinci'
         elif 'curie' in meter_name:

@@ -95,7 +95,7 @@ Store Count = DISTINCTCOUNT(CorrelatedData[StoreNumber])
 📊 Card: Cost Per Token  
 📊 Card: Active Devices
 📈 Line Chart: Daily Cost Trend
-🥧 Pie Chart: Cost by Model (GPT-4 vs GPT-3.5)
+🥧 Pie Chart: Cost by Model (GPT-5 vs GPT-4 vs GPT-3.5)
 ```
 
 ### **Operational Dashboard**

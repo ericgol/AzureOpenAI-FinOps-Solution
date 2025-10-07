@@ -89,13 +89,13 @@ class TestDataCorrelator:
                 'ResourceId': '/subscriptions/sub-1/resourceGroups/rg-1/providers/Microsoft.CognitiveServices/accounts/openai-1',
                 'ResourceType': 'Microsoft.CognitiveServices/accounts',
                 'ServiceName': 'Azure OpenAI',
-                'MeterName': 'GPT-4 Input Tokens',
+                'MeterName': 'GPT-5 Input Tokens',
                 'UsageDate': '2024-01-15T10:00:00Z',
-                'Cost': 10.50,
+                'Cost': 12.50,
                 'UsageQuantity': 1000,
                 'Currency': 'USD',
                 'CostType': 'Input Tokens',
-                'ModelFamily': 'GPT-4',
+                'ModelFamily': 'GPT-5',
                 'IsTokenBased': True
             }
         ]
@@ -496,6 +496,136 @@ class TestEdgeCases:
         # Should handle gracefully (might result in no correlations)
         assert isinstance(result, list)
         # This might be empty if no time windows match
+
+
+class TestGPT5ModelSupport:
+    """Test GPT-5 model support across the correlation system."""
+    
+    def test_gpt5_model_categorization(self):
+        """Test that GPT-5 models are properly categorized."""
+        from cost_collector import CostCollector
+        from unittest.mock import Mock
+        
+        config = Mock()
+        credential = Mock()
+        collector = CostCollector(config, credential)
+        
+        # Test different GPT-5 model variants
+        test_cases = [
+            ("GPT-5 Input Tokens", "GPT-5"),
+            ("GPT-5-Turbo Input Tokens", "GPT-5-Turbo"),
+            ("GPT-5-Preview Output Tokens", "GPT-5-Preview"),
+            ("GPT-4o Input Tokens", "GPT-4o"),
+            ("GPT-4-Turbo Output Tokens", "GPT-4-Turbo")
+        ]
+        
+        for meter_name, expected_family in test_cases:
+            record = {
+                'MeterName': meter_name,
+                'Cost': 10.0,
+                'UsageQuantity': 1000
+            }
+            
+            categorization = collector._categorize_cost(record)
+            assert categorization['ModelFamily'] == expected_family, f"Failed for {meter_name}"
+    
+    def test_gpt5_cost_correlation(self):
+        """Test cost correlation with GPT-5 models."""
+        config = Mock(spec=FinOpsConfig)
+        config.default_allocation_method = "proportional"
+        config.enable_user_mapping = True
+        config.enable_store_mapping = True
+        correlator = DataCorrelator(config)
+        
+        # GPT-5 telemetry data
+        gpt5_telemetry = [
+            {
+                'TimeGenerated': '2024-01-15T10:30:00Z',
+                'deviceId': 'device-001',
+                'storeNumber': 'store-001',
+                'TokensUsed': 800,  # Higher token usage for GPT-5
+                'StatusCode': 200,
+                'ResourceId': '/test/resource'
+            }
+        ]
+        
+        # GPT-5 cost data
+        gpt5_cost = [
+            {
+                'ResourceId': '/test/resource',
+                'UsageDate': '2024-01-15T10:30:00Z',
+                'Cost': 15.0,  # Higher cost for GPT-5
+                'UsageQuantity': 800,
+                'CostType': 'Input Tokens',
+                'ModelFamily': 'GPT-5'
+            }
+        ]
+        
+        result = correlator.correlate_data(gpt5_telemetry, gpt5_cost)
+        
+        assert len(result) > 0
+        assert result[0]['ModelFamily'] == 'GPT-5'
+        assert result[0]['AllocatedCost'] == 15.0  # Full cost allocated to single device
+    
+    def test_mixed_model_allocation(self):
+        """Test cost allocation across GPT-5, GPT-4, and GPT-3.5 models."""
+        config = Mock(spec=FinOpsConfig)
+        config.default_allocation_method = "proportional"
+        config.enable_user_mapping = True
+        config.enable_store_mapping = True
+        correlator = DataCorrelator(config)
+        
+        # Mixed model telemetry
+        mixed_telemetry = [
+            {
+                'TimeGenerated': '2024-01-15T10:30:00Z',
+                'deviceId': 'device-gpt5',
+                'storeNumber': 'store-001',
+                'TokensUsed': 1000,
+                'StatusCode': 200,
+                'ResourceId': '/test/gpt5-resource'
+            },
+            {
+                'TimeGenerated': '2024-01-15T10:30:00Z',
+                'deviceId': 'device-gpt4',
+                'storeNumber': 'store-001',
+                'TokensUsed': 800,
+                'StatusCode': 200,
+                'ResourceId': '/test/gpt4-resource'
+            }
+        ]
+        
+        # Mixed model costs
+        mixed_costs = [
+            {
+                'ResourceId': '/test/gpt5-resource',
+                'UsageDate': '2024-01-15T10:30:00Z',
+                'Cost': 20.0,
+                'UsageQuantity': 1000,
+                'ModelFamily': 'GPT-5'
+            },
+            {
+                'ResourceId': '/test/gpt4-resource',
+                'UsageDate': '2024-01-15T10:30:00Z',
+                'Cost': 12.0,
+                'UsageQuantity': 800,
+                'ModelFamily': 'GPT-4'
+            }
+        ]
+        
+        result = correlator.correlate_data(mixed_telemetry, mixed_costs)
+        
+        assert len(result) == 2
+        
+        # Find GPT-5 and GPT-4 records
+        gpt5_record = next((r for r in result if r.get('ModelFamily') == 'GPT-5'), None)
+        gpt4_record = next((r for r in result if r.get('ModelFamily') == 'GPT-4'), None)
+        
+        assert gpt5_record is not None, "GPT-5 record should exist"
+        assert gpt4_record is not None, "GPT-4 record should exist"
+        
+        # GPT-5 should have higher allocated cost
+        assert gpt5_record['AllocatedCost'] > gpt4_record['AllocatedCost']
 
 
 if __name__ == "__main__":

@@ -101,6 +101,29 @@ func azure functionapp publish your-function-app-name --python --build remote
 **Test APIM Endpoint:**
 ```bash
 # Replace with your actual APIM gateway URL and subscription key
+# Test GPT-5 endpoint (when available)
+curl -X POST "https://your-apim-gateway/openai/deployments/gpt-5/chat/completions?api-version=2024-02-01" \
+  -H "Content-Type: application/json" \
+  -H "Ocp-Apim-Subscription-Key: your-subscription-key" \
+  -H "device-id: test-device-001" \
+  -H "store-number: store-456" \
+  -d '{
+    "messages": [{"role": "user", "content": "Test GPT-5 for FinOps cost tracking."}],
+    "max_tokens": 50
+  }'
+
+# Test GPT-4 endpoint
+curl -X POST "https://your-apim-gateway/openai/deployments/gpt-4/chat/completions?api-version=2024-02-01" \
+  -H "Content-Type: application/json" \
+  -H "Ocp-Apim-Subscription-Key: your-subscription-key" \
+  -H "device-id: test-device-001" \
+  -H "store-number: store-456" \
+  -d '{
+    "messages": [{"role": "user", "content": "Test GPT-4 for FinOps cost tracking."}],
+    "max_tokens": 50
+  }'
+
+# Test GPT-3.5-Turbo endpoint  
 curl -X POST "https://your-apim-gateway/openai/deployments/gpt-35-turbo/chat/completions?api-version=2024-02-01" \
   -H "Content-Type: application/json" \
   -H "Ocp-Apim-Subscription-Key: your-subscription-key" \
