@@ -55,13 +55,10 @@ Apply this policy to your OpenAI API operations.
             dimensions["store-number"] = (string)context.Variables["store-number"];
             dimensions["api-version"] = (string)context.Variables["api-version"];
             dimensions["deployment-id"] = (string)context.Variables["deployment-id"];
-<<<<<<< HEAD
             dimensions["subscription-id"] = (string)context.Subscription.Id;
             dimensions["product-id"] = (string)context.Product.Id;
-=======
             dimensions["subscription-id"] = context.Subscription.Id ?? "";
             dimensions["product-id"] = context.Product.Id ?? "";
->>>>>>> 793608a (Typo fixes)
             dimensions["api-id"] = context.Api.Id;
             dimensions["operation-id"] = context.Operation.Id;
             return dimensions.ToString();
@@ -173,8 +170,8 @@ Apply this policy to your OpenAI API operations.
                     new JProperty("subscriptionId", context.Subscription?.Id ?? ""),
                     new JProperty("productId", context.Product?.Id ?? ""),
                     new JProperty("resourceRegion", context.Deployment.Region),
-                    new JProperty("requestSize", context.Request.Body?.As<string>()?.Length ?? 0),
-                    new JProperty("responseSize", context.Response.Body?.As<string>()?.Length ?? 0)
+                    new JProperty("requestSize", context.Request.Body?.As<string>(PreserveContent: true)?.Length ?? 0),
+                    new JProperty("responseSize", context.Response.Body?.As<string>(PreserveContent: true)?.Length ?? 0)
                 );
                 
                 return telemetryData.ToString();
