@@ -20,7 +20,7 @@ Apply this policy to your OpenAI API operations.
             if (string.IsNullOrEmpty(deviceId)) {
                 deviceId = context.Request.Headers.GetValueOrDefault("x-device-id", "");
             }
-            return string.IsNullOrEmpty(deviceId) ? "unknown" : deviceId;
+            return string.IsNullOrEmpty(deviceId) ? "unknown" : deviceId ;
         }" />
         
         <set-variable name="store-number" value="@{
@@ -55,8 +55,13 @@ Apply this policy to your OpenAI API operations.
             dimensions["store-number"] = (string)context.Variables["store-number"];
             dimensions["api-version"] = (string)context.Variables["api-version"];
             dimensions["deployment-id"] = (string)context.Variables["deployment-id"];
+<<<<<<< HEAD
             dimensions["subscription-id"] = (string)context.Subscription.Id;
             dimensions["product-id"] = (string)context.Product.Id;
+=======
+            dimensions["subscription-id"] = context.Subscription.Id ?? "";
+            dimensions["product-id"] = context.Product.Id ?? "";
+>>>>>>> 793608a (Typo fixes)
             dimensions["api-id"] = context.Api.Id;
             dimensions["operation-id"] = context.Operation.Id;
             return dimensions.ToString();
@@ -144,8 +149,8 @@ Apply this policy to your OpenAI API operations.
             return modelName;
         }" />
         
-        <!-- Log telemetry to Application Insights -->
-        <log-to-eventhub logger-id="applicationinsights" partition-id="0">
+        <!-- Log telemetry to EventHub -->
+        <log-to-eventhub logger-id="finops-eventhub-logger" partition-id="0">
             @{
                 var telemetryData = new JObject(
                     new JProperty("eventType", "FinOpsApiCall"),
@@ -156,7 +161,7 @@ Apply this policy to your OpenAI API operations.
                     new JProperty("apiName", context.Api.Name),
                     new JProperty("operationName", context.Operation.Name),
                     new JProperty("method", context.Request.Method),
-                    new JProperty("url", (string) context.Request.Url)),
+                    new JProperty("url", (string)context.Request.Url),
                     new JProperty("statusCode", context.Response.StatusCode),
                     new JProperty("responseTime", context.Variables["response-time"]),
                     new JProperty("tokensUsed", context.Variables["tokens-used"]),
@@ -165,11 +170,11 @@ Apply this policy to your OpenAI API operations.
                     new JProperty("modelName", context.Variables["model-name"]),
                     new JProperty("apiVersion", context.Variables["api-version"]),
                     new JProperty("deploymentId", context.Variables["deployment-id"]),
-                    new JProperty("subscriptionId", context.Subscription.Id),
-                    new JProperty("productId", context.Product.Id),
+                    new JProperty("subscriptionId", context.Subscription?.Id ?? ""),
+                    new JProperty("productId", context.Product?.Id ?? ""),
                     new JProperty("resourceRegion", context.Deployment.Region),
-                    new JProperty("requestSize", context.Request.Body.As<string>().Length),
-                    new JProperty("responseSize", context.Response.Body.As<string>().Length)
+                    new JProperty("requestSize", context.Request.Body?.As<string>()?.Length ?? 0),
+                    new JProperty("responseSize", context.Response.Body?.As<string>()?.Length ?? 0)
                 );
                 
                 return telemetryData.ToString();
@@ -198,7 +203,7 @@ Apply this policy to your OpenAI API operations.
         <base />
         
         <!-- Log errors with context for debugging -->
-        <log-to-eventhub logger-id="applicationinsights" partition-id="0">
+        <log-to-eventhub logger-id="finops-eventhub-logger" partition-id="0">
             @{
                 var errorData = new JObject(
                     new JProperty("eventType", "FinOpsApiError"),
@@ -209,13 +214,13 @@ Apply this policy to your OpenAI API operations.
                     new JProperty("apiName", context.Api.Name),
                     new JProperty("operationName", context.Operation.Name),
                     new JProperty("method", context.Request.Method),
-                    new JProperty("url", (string) context.Request.Url),
-                    new JProperty("statusCode", context.Response.StatusCode),
+                    new JProperty("url", (string)context.Request.Url),
+                    new JProperty("statusCode", context.Response?.StatusCode ?? 500),
                     new JProperty("responseTime", (int)(DateTime.UtcNow - (DateTime)context.Variables["request-timestamp"]).TotalMilliseconds),
-                    new JProperty("errorMessage", context.LastError.Message ?? "Unknown error"),
-                    new JProperty("errorSource", context.LastError.Source ?? ""),
+                    new JProperty("errorMessage", context.LastError?.Message ?? "Unknown error"),
+                    new JProperty("errorSource", context.LastError?.Source ?? ""),
                     new JProperty("subscriptionId", context.Subscription?.Id ?? ""),
-                    new JProperty("productId", context.Product.Id)
+                    new JProperty("productId", context.Product?.Id ?? "")
                 );
                 
                 return errorData.ToString();
