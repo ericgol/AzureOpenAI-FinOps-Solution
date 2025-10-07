@@ -120,8 +120,8 @@ The solution uses the following key configuration parameters:
 ### Custom Attributes
 
 Configure the following custom attributes in APIM policies:
-- `user-id` - Unique identifier for API consumers
-- `store-id` - Store/location identifier for cost allocation
+- `device-id` - Unique identifier for API consumers
+- `store-number` - Store/location identifier for cost allocation
 - `api-category` - API categorization for reporting
 
 ## Data Flow

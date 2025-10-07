@@ -12,8 +12,8 @@ The main dataset for Power BI reporting is stored in the `finops-data` container
 |-------------|-----------|-------------|---------|
 | **TimeGenerated** | DateTime | Timestamp when the API call was made | 2024-01-15T10:30:00Z |
 | **Date** | Date | Date of the API call (for daily aggregation) | 2024-01-15 |
-| **UserId** | String | User identifier from API headers | user123, test-user-456 |
-| **StoreId** | String | Store identifier from API headers | store001, location-nyc |
+| **deviceId** | String | User identifier from API headers | user123, test-user-456 |
+| **storeNumber** | String | Store identifier from API headers | store001, location-nyc |
 | **ApiName** | String | Name of the API operation | chat/completions, embeddings |
 | **ModelName** | String | OpenAI model used | gpt-35-turbo, gpt-4 |
 | **TokensUsed** | Integer | Total tokens consumed | 150, 2500 |
@@ -44,13 +44,13 @@ CostPerToken = DIVIDE([UserCost], [UserTokens], 0)
 StoreCost = 
     CALCULATE(
         SUM(FinOpsCorrelatedData[AllocatedCost]),
-        FinOpsCorrelatedData[StoreId] <> "unknown"
+        FinOpsCorrelatedData[storeNumber] <> "unknown"
     )
 
 StoreAPICount = 
     CALCULATE(
         COUNTROWS(FinOpsCorrelatedData),
-        FinOpsCorrelatedData[StoreId] <> "unknown"
+        FinOpsCorrelatedData[storeNumber] <> "unknown"
     )
 ```
 
@@ -127,7 +127,7 @@ Authentication: Service Principal
 ### 1. Power Query Transformations
 ```powerquery
 // Remove unknown users/stores for analysis
-= Table.SelectRows(Source, each ([UserId] <> "unknown" and [StoreId] <> "unknown"))
+= Table.SelectRows(Source, each ([deviceId] <> "unknown" and [storeNumber] <> "unknown"))
 
 // Add calculated columns
 = Table.AddColumn(PreviousStep, "CostPerToken", each [AllocatedCost] / [TokensUsed])
@@ -197,5 +197,5 @@ This template includes:
 ### Data Quality Checks:
 - Verify no duplicate records by RequestId + TimeGenerated
 - Ensure cost data aligns with Azure billing
-- Check for missing UserId/StoreId patterns
+- Check for missing deviceId/storeNumber patterns
 - Validate token counts against API responses

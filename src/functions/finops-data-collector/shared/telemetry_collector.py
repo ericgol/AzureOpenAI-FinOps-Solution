@@ -220,8 +220,8 @@ class TelemetryCollector:
             'Source': 'APIM',
             'TimeGenerated': record.get('TimeGenerated'),
             'RequestId': record.get('RequestId', ''),
-            'UserId': record.get('UserId', 'unknown'),
-            'StoreId': record.get('StoreId', 'unknown'),
+            'deviceId': record.get('deviceId', 'unknown'),
+            'storeNumber': record.get('storeNumber', 'unknown'),
             'ApiName': record.get('ApiName', ''),
             'Method': record.get('Method', ''),
             'Url': record.get('Url', ''),
@@ -232,10 +232,10 @@ class TelemetryCollector:
         }
         
         # Ensure user and store IDs are not empty
-        if not processed['UserId'] or processed['UserId'] in ['', 'null', 'None']:
-            processed['UserId'] = 'unknown'
-        if not processed['StoreId'] or processed['StoreId'] in ['', 'null', 'None']:
-            processed['StoreId'] = 'unknown'
+        if not processed['deviceId'] or processed['deviceId'] in ['', 'null', 'None']:
+            processed['deviceId'] = 'unknown'
+        if not processed['storeNumber'] or processed['storeNumber'] in ['', 'null', 'None']:
+            processed['storeNumber'] = 'unknown'
         
         return processed
     
@@ -253,8 +253,8 @@ class TelemetryCollector:
             'Source': 'ApplicationInsights',
             'TimeGenerated': record.get('TimeGenerated'),
             'RequestId': record.get('RequestId', ''),
-            'UserId': record.get('UserId', 'unknown'),
-            'StoreId': record.get('StoreId', 'unknown'),
+            'deviceId': record.get('deviceId', 'unknown'),
+            'storeNumber': record.get('storeNumber', 'unknown'),
             'ApiName': record.get('ApiName', ''),
             'Method': record.get('Method', 'POST'),
             'Url': record.get('Url', ''),
@@ -265,10 +265,10 @@ class TelemetryCollector:
         }
         
         # Ensure user and store IDs are not empty
-        if not processed['UserId'] or processed['UserId'] in ['', 'null', 'None']:
-            processed['UserId'] = 'unknown'
-        if not processed['StoreId'] or processed['StoreId'] in ['', 'null', 'None']:
-            processed['StoreId'] = 'unknown'
+        if not processed['deviceId'] or processed['deviceId'] in ['', 'null', 'None']:
+            processed['deviceId'] = 'unknown'
+        if not processed['storeNumber'] or processed['storeNumber'] in ['', 'null', 'None']:
+            processed['storeNumber'] = 'unknown'
         
         return processed
     
@@ -297,8 +297,8 @@ class TelemetryCollector:
         
         summary = {
             'total_records': len(telemetry_data),
-            'unique_users': df['UserId'].nunique(),
-            'unique_stores': df['StoreId'].nunique(),
+            'unique_users': df['deviceId'].nunique(),
+            'unique_stores': df['storeNumber'].nunique(),
             'total_api_calls': len(telemetry_data),
             'avg_response_time': df['ResponseTime'].mean(),
             'total_tokens': df['TokensUsed'].sum(),

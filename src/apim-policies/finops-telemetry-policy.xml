@@ -1,7 +1,7 @@
 <!--
 FinOps Telemetry Collection Policy for Azure API Management
 
-This policy extracts user-id and store-id from headers/query parameters and logs
+This policy extracts device-id and store-number from headers/query parameters and logs
 telemetry data to Application Insights for cost allocation and usage tracking.
 
 Apply this policy to your OpenAI API operations.
@@ -11,28 +11,28 @@ Apply this policy to your OpenAI API operations.
         <base />
         
         <!-- Extract custom attributes for cost allocation -->
-        <set-variable name="user-id" value="@{
-            // Try to get user-id from header first, then query parameter
-            var userId = context.Request.Headers.GetValueOrDefault("user-id", "");
-            if (string.IsNullOrEmpty(userId)) {
-                userId = context.Request.Url.Query.GetValueOrDefault("user-id", "");
+        <set-variable name="device-id" value="@{
+            // Try to get device-id from header first, then query parameter
+            var deviceId = context.Request.Headers.GetValueOrDefault("device-id", "");
+            if (string.IsNullOrEmpty(deviceId)) {
+                deviceId = context.Request.Url.Query.GetValueOrDefault("device-id", "");
             }
-            if (string.IsNullOrEmpty(userId)) {
-                userId = context.Request.Headers.GetValueOrDefault("x-user-id", "");
+            if (string.IsNullOrEmpty(deviceId)) {
+                deviceId = context.Request.Headers.GetValueOrDefault("x-device-id", "");
             }
-            return string.IsNullOrEmpty(userId) ? "unknown" : userId;
+            return string.IsNullOrEmpty(deviceId) ? "unknown" : deviceId;
         }" />
         
-        <set-variable name="store-id" value="@{
-            // Try to get store-id from header first, then query parameter
-            var storeId = context.Request.Headers.GetValueOrDefault("store-id", "");
-            if (string.IsNullOrEmpty(storeId)) {
-                storeId = context.Request.Url.Query.GetValueOrDefault("store-id", "");
+        <set-variable name="store-number" value="@{
+            // Try to get store-number from header first, then query parameter
+            var storeNumber = context.Request.Headers.GetValueOrDefault("store-number", "");
+            if (string.IsNullOrEmpty(storeNumber)) {
+                storeNumber = context.Request.Url.Query.GetValueOrDefault("store-number", "");
             }
-            if (string.IsNullOrEmpty(storeId)) {
-                storeId = context.Request.Headers.GetValueOrDefault("x-store-id", "");
+            if (string.IsNullOrEmpty(storeNumber)) {
+                storeNumber = context.Request.Headers.GetValueOrDefault("x-store-number", "");
             }
-            return string.IsNullOrEmpty(storeId) ? "unknown" : storeId;
+            return string.IsNullOrEmpty(storeNumber) ? "unknown" : storeNumber;
         }" />
         
         <!-- Store request timestamp and generate correlation ID -->
@@ -51,8 +51,8 @@ Apply this policy to your OpenAI API operations.
         <!-- Add custom dimensions to request context -->
         <set-variable name="custom-dimensions" value="@{
             var dimensions = new JObject();
-            dimensions["user-id"] = (string)context.Variables["user-id"];
-            dimensions["store-id"] = (string)context.Variables["store-id"];
+            dimensions["device-id"] = (string)context.Variables["device-id"];
+            dimensions["store-number"] = (string)context.Variables["store-number"];
             dimensions["api-version"] = (string)context.Variables["api-version"];
             dimensions["deployment-id"] = (string)context.Variables["deployment-id"];
             dimensions["subscription-id"] = (string)context.Subscription.Id;
@@ -151,8 +151,8 @@ Apply this policy to your OpenAI API operations.
                     new JProperty("eventType", "FinOpsApiCall"),
                     new JProperty("timestamp", context.Variables["request-timestamp"]),
                     new JProperty("correlationId", context.Variables["correlation-id"]),
-                    new JProperty("userId", context.Variables["user-id"]),
-                    new JProperty("storeId", context.Variables["store-id"]),
+                    new JProperty("deviceId", context.Variables["device-id"]),
+                    new JProperty("storeNumber", context.Variables["store-number"]),
                     new JProperty("apiName", context.Api.Name),
                     new JProperty("operationName", context.Operation.Name),
                     new JProperty("method", context.Request.Method),
@@ -177,12 +177,12 @@ Apply this policy to your OpenAI API operations.
         </log-to-eventhub>
         
         <!-- Add custom headers to response for debugging -->
-        <set-header name="x-finops-user-id" exists-action="override">
-            <value>@((string)context.Variables["user-id"])</value>
+        <set-header name="x-finops-device-id" exists-action="override">
+            <value>@((string)context.Variables["device-id"])</value>
         </set-header>
         
-        <set-header name="x-finops-store-id" exists-action="override">
-            <value>@((string)context.Variables["store-id"])</value>
+        <set-header name="x-finops-store-number" exists-action="override">
+            <value>@((string)context.Variables["store-number"])</value>
         </set-header>
         
         <set-header name="x-finops-correlation-id" exists-action="override">
@@ -204,8 +204,8 @@ Apply this policy to your OpenAI API operations.
                     new JProperty("eventType", "FinOpsApiError"),
                     new JProperty("timestamp", context.Variables["request-timestamp"]),
                     new JProperty("correlationId", context.Variables["correlation-id"]),
-                    new JProperty("userId", context.Variables["user-id"]),
-                    new JProperty("storeId", context.Variables["store-id"]),
+                    new JProperty("deviceId", context.Variables["device-id"]),
+                    new JProperty("storeNumber", context.Variables["store-number"]),
                     new JProperty("apiName", context.Api.Name),
                     new JProperty("operationName", context.Operation.Name),
                     new JProperty("method", context.Request.Method),

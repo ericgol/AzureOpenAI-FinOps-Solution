@@ -93,8 +93,8 @@ APIM_URL="https://YOUR-APIM-GATEWAY-URL/openai"
 curl -X POST "$APIM_URL/deployments/gpt-35-turbo/chat/completions?api-version=2024-02-01" \
   -H "Content-Type: application/json" \
   -H "Ocp-Apim-Subscription-Key: YOUR_SUBSCRIPTION_KEY" \
-  -H "user-id: test-user-123" \
-  -H "store-id: store-456" \
+  -H "device-id: test-user-123" \
+  -H "store-number: store-456" \
   -d '{
     "messages": [
       {"role": "user", "content": "Hello, this is a test message for FinOps tracking."}

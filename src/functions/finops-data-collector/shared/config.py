@@ -183,13 +183,13 @@ class FinOpsConfig(BaseSettings):
                 ApiManagementGatewayLogs
                 | where TimeGenerated >= ago({lookback_hours}h)
                 | where OperationName != ""
-                | extend UserId = tostring(RequestHeaders["user-id"])
-                | extend StoreId = tostring(RequestHeaders["store-id"])
+                | extend deviceId = tostring(RequestHeaders["device-id"])
+                | extend storeNumber = tostring(RequestHeaders["store-number"])
                 | project 
                     TimeGenerated,
                     RequestId = CorrelationId,
-                    UserId = iif(UserId == "", "unknown", UserId),
-                    StoreId = iif(StoreId == "", "unknown", StoreId),
+                    deviceId = iif(deviceId == "", "unknown", deviceId),
+                    storeNumber = iif(storeNumber == "", "unknown", storeNumber),
                     ApiName = OperationName,
                     Method = RequestMethod,
                     Url = RequestUri,
@@ -205,13 +205,13 @@ class FinOpsConfig(BaseSettings):
                 requests
                 | where timestamp >= ago({lookback_hours}h)
                 | where name contains "openai"
-                | extend UserId = tostring(customDimensions["user-id"])
-                | extend StoreId = tostring(customDimensions["store-id"])
+                | extend deviceId = tostring(customDimensions["device-id"])
+                | extend storeNumber = tostring(customDimensions["store-number"])
                 | project 
                     TimeGenerated = timestamp,
                     RequestId = operation_Id,
-                    UserId = iif(UserId == "", "unknown", UserId),
-                    StoreId = iif(StoreId == "", "unknown", StoreId),
+                    deviceId = iif(deviceId == "", "unknown", deviceId),
+                    storeNumber = iif(storeNumber == "", "unknown", storeNumber),
                     ApiName = name,
                     Method = "POST",
                     Url = url,

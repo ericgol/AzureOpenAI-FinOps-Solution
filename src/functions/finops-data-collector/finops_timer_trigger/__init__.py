@@ -94,8 +94,8 @@ def log_summary_stats(telemetry_data: List[Dict], cost_data: List[Dict], correla
         # Telemetry stats
         if telemetry_data:
             telemetry_df = pd.DataFrame(telemetry_data)
-            unique_users = telemetry_df['UserId'].nunique() if 'UserId' in telemetry_df.columns else 0
-            unique_stores = telemetry_df['StoreId'].nunique() if 'StoreId' in telemetry_df.columns else 0
+            unique_users = telemetry_df['deviceId'].nunique() if 'deviceId' in telemetry_df.columns else 0
+            unique_stores = telemetry_df['storeNumber'].nunique() if 'storeNumber' in telemetry_df.columns else 0
             total_api_calls = len(telemetry_data)
             
             logging.info(f"Telemetry Summary - Users: {unique_users}, Stores: {unique_stores}, API Calls: {total_api_calls}")

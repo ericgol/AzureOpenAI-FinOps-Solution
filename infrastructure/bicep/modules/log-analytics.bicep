@@ -49,13 +49,13 @@ resource finOpsApiCallsTable 'Microsoft.OperationalInsights/workspaces/tables@20
           isHidden: false
         }
         {
-          name: 'UserId'
+          name: 'deviceId'
           type: 'string'
           isDefaultDisplay: true
           isHidden: false
         }
         {
-          name: 'StoreId'
+          name: 'storeNumber'
           type: 'string'
           isDefaultDisplay: true
           isHidden: false
@@ -146,13 +146,13 @@ resource finOpsCostDataTable 'Microsoft.OperationalInsights/workspaces/tables@20
           isHidden: false
         }
         {
-          name: 'UserId'
+          name: 'deviceId'
           type: 'string'
           isDefaultDisplay: true
           isHidden: false
         }
         {
-          name: 'StoreId'
+          name: 'storeNumber'
           type: 'string'
           isDefaultDisplay: true
           isHidden: false
@@ -189,7 +189,7 @@ FinOpsApiCalls_CL
     AvgResponseTime = avg(ResponseTime),
     TotalTokens = sum(TokensUsed),
     SuccessRate = countif(StatusCode < 400) * 100.0 / count()
-    by UserId, StoreId, ApiName
+    by deviceId, storeNumber, ApiName
 | order by TotalCalls desc
 '''
     version: 2
@@ -208,7 +208,7 @@ FinOpsCostData_CL
 | summarize 
     TotalAllocatedCost = sum(AllocatedCost),
     AvgDailyCost = avg(AllocatedCost)
-    by UserId, StoreId, bin(Date, 1d)
+    by deviceId, storeNumber, bin(Date, 1d)
 | order by Date desc, TotalAllocatedCost desc
 '''
     version: 2

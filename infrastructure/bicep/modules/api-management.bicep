@@ -176,13 +176,13 @@ resource chatCompletionsOperation 'Microsoft.ApiManagement/service/apis/operatio
           required: true
         }
         {
-          name: 'user-id'
+          name: 'device-id'
           type: 'string'
           required: false
           description: 'Custom user identifier for cost allocation'
         }
         {
-          name: 'store-id'
+          name: 'store-number'
           type: 'string'
           required: false
           description: 'Store identifier for cost allocation'
@@ -212,8 +212,8 @@ resource finOpsTelemetryPolicy 'Microsoft.ApiManagement/service/apis/policies@20
 <policies>
   <inbound>
     <base />
-    <set-variable name="user-id" value="@(context.Request.Headers.GetValueOrDefault("user-id", "unknown"))" />
-    <set-variable name="store-id" value="@(context.Request.Headers.GetValueOrDefault("store-id", "unknown"))" />
+    <set-variable name="device-id" value="@(context.Request.Headers.GetValueOrDefault("device-id", "unknown"))" />
+    <set-variable name="store-number" value="@(context.Request.Headers.GetValueOrDefault("store-number", "unknown"))" />
     <set-variable name="request-timestamp" value="@(DateTime.UtcNow)" />
     <set-variable name="request-id" value="@(Guid.NewGuid())" />
   </inbound>
@@ -224,8 +224,8 @@ resource finOpsTelemetryPolicy 'Microsoft.ApiManagement/service/apis/policies@20
     <base />
     <log-to-eventhub logger-id="applicationinsights">
       @{
-        var userId = (string)context.Variables["user-id"];
-        var storeId = (string)context.Variables["store-id"];
+        var deviceId = (string)context.Variables["device-id"];
+        var storeNumber = (string)context.Variables["store-number"];
         var requestTimestamp = (DateTime)context.Variables["request-timestamp"];
         var requestId = (string)context.Variables["request-id"];
         var responseTime = (int)(DateTime.UtcNow - requestTimestamp).TotalMilliseconds;
@@ -245,8 +245,8 @@ resource finOpsTelemetryPolicy 'Microsoft.ApiManagement/service/apis/policies@20
         return new JObject(
           new JProperty("timestamp", requestTimestamp),
           new JProperty("requestId", requestId),
-          new JProperty("userId", userId),
-          new JProperty("storeId", storeId),
+          new JProperty("deviceId", deviceId),
+          new JProperty("storeNumber", storeNumber),
           new JProperty("apiName", context.Api.Name),
           new JProperty("operationName", context.Operation.Name),
           new JProperty("method", context.Request.Method),
@@ -265,8 +265,8 @@ resource finOpsTelemetryPolicy 'Microsoft.ApiManagement/service/apis/policies@20
     <base />
     <log-to-eventhub logger-id="applicationinsights">
       @{
-        var userId = (string)context.Variables["user-id"];
-        var storeId = (string)context.Variables["store-id"];
+        var deviceId = (string)context.Variables["device-id"];
+        var storeNumber = (string)context.Variables["store-number"];
         var requestTimestamp = (DateTime)context.Variables["request-timestamp"];
         var requestId = (string)context.Variables["request-id"];
         var responseTime = (int)(DateTime.UtcNow - requestTimestamp).TotalMilliseconds;
@@ -274,8 +274,8 @@ resource finOpsTelemetryPolicy 'Microsoft.ApiManagement/service/apis/policies@20
         return new JObject(
           new JProperty("timestamp", requestTimestamp),
           new JProperty("requestId", requestId),
-          new JProperty("userId", userId),
-          new JProperty("storeId", storeId),
+          new JProperty("deviceId", deviceId),
+          new JProperty("storeNumber", storeNumber),
           new JProperty("apiName", context.Api.Name),
           new JProperty("operationName", context.Operation.Name),
           new JProperty("method", context.Request.Method),
