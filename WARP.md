@@ -20,19 +20,24 @@ The solution follows a **7-step data pipeline architecture**:
 
 ### Key Components
 
-- **Azure Function App** (`src/functions/finops-data-collector/`) - Core Python data processing engine
-- **APIM Policy** (`src/apim-policies/finops-telemetry-policy.xml`) - Captures custom attributes (device-id, store-number) and logs telemetry
+- **Azure Function App** (`src/functions/finops-data-collector/`) - Core Python data processing engine for cost correlation
+- **EventHub Function App** (`src/functions/eventhub-to-appinsights/`) - Python function that forwards APIM telemetry from EventHub to Application Insights
+- **APIM Policy** (`src/apim-policies/finops-telemetry-policy.xml`) - Captures custom attributes (device-id, store-number) and logs telemetry to EventHub
+- **APIM EventHub Logger** (`infrastructure/bicep/modules/apim-eventhub-logger.bicep`) - Configures APIM logger to send events to EventHub
+- **EventHub** - Receives telemetry events from APIM policy for real-time processing
 - **Bicep Infrastructure** (`infrastructure/bicep/`) - Modular IaC templates for all Azure resources
 - **Power BI Integration** - Pre-defined schema and dashboard templates for cost visualization
 
 ### Data Flow Architecture
 
 ```
-API Calls → APIM Gateway → Log Analytics → Timer Function → Cost Management API
-                ↓                            ↓                     ↓
-        Custom Headers              KQL Queries          Cost Correlation
-                ↓                            ↓                     ↓
-        Application Insights         Storage Account      Power BI Reports
+API Calls → APIM Gateway → EventHub → EventHub Function → Application Insights
+                ↓              ↓              ↓                    ↓
+        Custom Headers    Real-time     Telemetry           Structured Traces
+                ↓         Processing      Forward                  ↓
+        Log Analytics → Timer Function → Cost Management → Storage → Power BI
+                ↓              ↓                ↓              ↓
+           KQL Queries    Cost Correlation    Data Storage   Reports
 ```
 
 ## Common Development Commands
@@ -80,10 +85,14 @@ func start --functions finops_timer_trigger
 
 **Function Deployment:**
 ```bash
-# Deploy to existing Function App
-func azure functionapp publish your-function-app-name --python
+# Deploy FinOps data collector function
+func azure functionapp publish your-finops-function-app-name --python
 
-# Deploy with specific Python version
+# Deploy EventHub to AppInsights function
+cd src/functions/eventhub-to-appinsights
+func azure functionapp publish your-eventhub-function-app-name --python
+
+# Deploy with remote build (recommended for production)
 func azure functionapp publish your-function-app-name --python --build remote
 ```
 
@@ -120,13 +129,21 @@ traces
 
 **Validate Function Execution:**
 ```bash
-# Check function logs in Azure
-az functionapp logs tail --name your-function-app-name --resource-group your-resource-group
+# Check FinOps data collector function logs
+az functionapp logs tail --name your-finops-function-app-name --resource-group your-resource-group
 
-# Monitor function execution
+# Check EventHub to AppInsights function logs
+az functionapp logs tail --name your-eventhub-function-app-name --resource-group your-resource-group
+
+# Monitor specific function execution
 az monitor log-analytics query \
   --workspace your-log-analytics-workspace-id \
   --analytics-query "FunctionAppLogs | where FunctionName == 'finops_timer_trigger' | order by TimeGenerated desc | take 10"
+
+# Monitor EventHub function execution
+az monitor log-analytics query \
+  --workspace your-log-analytics-workspace-id \
+  --analytics-query "FunctionAppLogs | where FunctionName == 'eventhub_to_appinsights' | order by TimeGenerated desc | take 10"
 ```
 
 ### Data Analysis and Debugging
@@ -182,7 +199,7 @@ DEFAULT_ALLOCATION_METHOD="proportional|equal|usage-based|token-based"
 
 ### APIM Policy Customization
 
-The telemetry policy captures custom attributes from headers or query parameters:
+The telemetry policy captures custom attributes from headers or query parameters and sends them to EventHub:
 
 ```xml
 <!-- Extract device-id from multiple possible sources -->
@@ -193,7 +210,22 @@ The telemetry policy captures custom attributes from headers or query parameters
     }
     return string.IsNullOrEmpty(deviceId) ? "unknown" : deviceId;
 }" />
+
+<!-- Log to EventHub using configured logger -->
+<log-to-eventhub logger-id="finops-eventhub-logger" partition-id="0">
+    @{
+        var telemetryData = new JObject(
+            new JProperty("eventType", "FinOpsApiCall"),
+            new JProperty("deviceId", context.Variables["device-id"]),
+            new JProperty("storeNumber", context.Variables["store-number"])
+            // ... other properties
+        );
+        return telemetryData.ToString();
+    }
+</log-to-eventhub>
 ```
+
+**Important**: The `logger-id` in the policy must match the logger name configured in the Bicep template (`finops-eventhub-logger`).
 
 ### Cost Allocation Logic
 
@@ -216,11 +248,19 @@ The solution supports multiple cost allocation methods configured via environmen
 
 ### Function Development
 
+**FinOps Data Collector Function:**
 1. **Set up local environment** with `local.settings.json` (see template in `src/configs/`)
 2. **Install dependencies** with `pip install -r requirements.txt`
 3. **Develop and test locally** using Azure Functions Core Tools
 4. **Run unit tests** with pytest
 5. **Deploy and validate** in dev environment
+
+**EventHub to AppInsights Function:**
+1. **Set up local environment** with `local.settings.json.template` in `src/functions/eventhub-to-appinsights/`
+2. **Configure EventHub connection** string and Application Insights connection string
+3. **Install dependencies** with `pip install -r requirements.txt`
+4. **Test locally** with `func start` (requires EventHub access)
+5. **Deploy and monitor** telemetry flow
 
 ### Adding New Data Sources
 

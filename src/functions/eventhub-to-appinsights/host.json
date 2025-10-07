@@ -1,0 +1,42 @@
+{
+  "version": "2.0",
+  "functionTimeout": "00:05:00",
+  "logging": {
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": true,
+        "excludedTypes": "Request"
+      }
+    },
+    "logLevel": {
+      "default": "Information",
+      "Host.Results": "Error",
+      "Function": "Information",
+      "Azure.Messaging.EventHubs": "Warning"
+    }
+  },
+  "extensionBundle": {
+    "id": "Microsoft.Azure.Functions.ExtensionBundle",
+    "version": "[4.*, 5.0.0)"
+  },
+  "extensions": {
+    "eventHubs": {
+      "maxEventBatchSize": 100,
+      "prefetchCount": 300,
+      "batchCheckpointFrequency": 1
+    }
+  },
+  "healthMonitor": {
+    "enabled": true,
+    "healthCheckInterval": "00:00:10",
+    "healthCheckWindow": "00:02:00",
+    "healthCheckThreshold": 6,
+    "counterThreshold": 0.80
+  },
+  "retry": {
+    "strategy": "exponentialBackoff",
+    "maxRetryCount": 3,
+    "minimumInterval": "00:00:01",
+    "maximumInterval": "00:00:30"
+  }
+}

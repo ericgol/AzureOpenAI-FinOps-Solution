@@ -123,6 +123,57 @@ module functionApp 'modules/function-app.bicep' = {
   }
 }
 
+// Deploy EventHub for APIM telemetry
+module eventHub 'modules/event-hub.bicep' = {
+  scope: rg
+  name: 'deploy-event-hub'
+  params: {
+    eventHubNamespaceName: '${projectName}-${environment}-eh-${uniqueSuffix}'
+    eventHubName: 'finops-telemetry'
+    location: location
+    tags: tags
+    eventHubSku: environment == 'prod' ? 'Standard' : 'Basic'
+    eventHubCapacity: environment == 'prod' ? 2 : 1
+    environment: environment
+  }
+}
+
+// Deploy EventHub to Application Insights Function App
+module eventHubFunctionApp 'modules/eventhub-function-app.bicep' = {
+  scope: rg
+  name: 'deploy-eventhub-function-app'
+  params: {
+    functionAppName: '${projectName}-${environment}-ehfunc-${uniqueSuffix}'
+    location: location
+    tags: tags
+    storageAccountName: storage.outputs.storageAccountName
+    appInsightsConnectionString: appInsights.outputs.connectionString
+    eventHubConnectionString: eventHub.outputs.functionConnectionString
+    eventHubName: eventHub.outputs.eventHubName
+    environment: environment
+    subnetId: enablePrivateNetworking ? networking.outputs.functionSubnetId : ''
+    enablePrivateNetworking: enablePrivateNetworking
+  }
+}
+
+// Configure APIM EventHub Logger
+module apimEventHubLogger 'modules/apim-eventhub-logger.bicep' = {
+  scope: rg
+  name: 'deploy-apim-eventhub-logger'
+  dependsOn: [
+    apim
+    eventHub
+  ]
+  params: {
+    apimName: apim.outputs.apimName
+    eventHubName: eventHub.outputs.eventHubName
+    eventHubConnectionString: eventHub.outputs.apimConnectionString
+    loggerName: 'finops-eventhub-logger'
+    isBuffered: true
+    tags: tags
+  }
+}
+
 // Deploy Key Vault for secrets management
 module keyVault 'modules/key-vault.bicep' = {
   scope: rg
@@ -145,6 +196,11 @@ output appInsightsInstrumentationKey string = appInsights.outputs.instrumentatio
 output apimName string = apim.outputs.apimName
 output apimGatewayUrl string = apim.outputs.gatewayUrl
 output functionAppName string = functionApp.outputs.functionAppName
+output eventHubFunctionAppName string = eventHubFunctionApp.outputs.functionAppName
+output eventHubNamespace string = eventHub.outputs.eventHubNamespaceName
+output eventHubName string = eventHub.outputs.eventHubName
+output eventHubApimConnectionString string = eventHub.outputs.apimConnectionString
+output apimLoggerName string = apimEventHubLogger.outputs.loggerName
 output storageAccountName string = storage.outputs.storageAccountName
 output keyVaultName string = keyVault.outputs.keyVaultName
 output environment string = environment
