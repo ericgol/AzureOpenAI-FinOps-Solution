@@ -7,12 +7,12 @@ azure-identity==1.15.0
 azure-eventhub==5.11.4
 azure-storage-blob==12.19.0
 
-# Application Insights
-azure-monitor-opentelemetry==1.2.0
-opentelemetry-api==1.21.0
-opentelemetry-sdk==1.21.0
-opencensus-ext-azure==1.1.13
-applicationinsights==0.11.10
+# Azure Monitor OpenTelemetry
+azure-monitor-opentelemetry-exporter==1.0.0b26
+opentelemetry-api==1.25.0
+opentelemetry-sdk==1.25.0
+opentelemetry-instrumentation==0.46b0
+opentelemetry-exporter-otlp==1.25.0
 
 # JSON handling and utilities
 requests==2.31.0
