@@ -7,9 +7,17 @@
 .DESCRIPTION
     This script deploys the complete FinOps solution infrastructure using Azure Bicep templates.
     It's optimized for development environments with minimal cost and resources.
+    
+    The script supports interactive authentication with MFA through browser-based login.
+    A valid Azure AD Tenant ID is required for authentication.
 
 .PARAMETER SubscriptionId
     The Azure subscription ID where resources will be deployed.
+
+.PARAMETER TenantId
+    The Azure AD tenant ID for authentication. Required for MFA-enabled accounts.
+    You can find your Tenant ID in the Azure Portal under Azure Active Directory > Properties > Tenant ID.
+    Alternatively, run: az account show --query tenantId -o tsv
 
 .PARAMETER Location
     The Azure region where resources will be deployed. Defaults to 'East US 2'.
@@ -30,16 +38,26 @@
     Preview what resources would be created without actually deploying them.
 
 .EXAMPLE
-    ./Deploy-DevEnvironment.ps1 -SubscriptionId "12345678-1234-1234-1234-123456789012"
+    ./Deploy-DevEnvironment.ps1 -SubscriptionId "12345678-1234-1234-1234-123456789012" -TenantId "87654321-4321-4321-4321-210987654321"
 
 .EXAMPLE
-    ./Deploy-DevEnvironment.ps1 -SubscriptionId "12345678-1234-1234-1234-123456789012" -Location "West US 2" -WhatIf
+    ./Deploy-DevEnvironment.ps1 -SubscriptionId "12345678-1234-1234-1234-123456789012" -TenantId "87654321-4321-4321-4321-210987654321" -Location "West US 2" -WhatIf
+
+.EXAMPLE
+    # Find your Tenant ID first, then deploy
+    $tenantId = az account show --query tenantId -o tsv
+    ./Deploy-DevEnvironment.ps1 -SubscriptionId "12345678-1234-1234-1234-123456789012" -TenantId $tenantId
 #>
 
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
+    [ValidatePattern('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')]
     [string]$SubscriptionId,
+    
+    [Parameter(Mandatory = $true)]
+    [ValidatePattern('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')]
+    [string]$TenantId,
     
     [Parameter(Mandatory = $false)]
     [string]$Location = "East US 2",
@@ -71,6 +89,7 @@ Write-Host "🚀 Starting Azure OpenAI FinOps Solution Deployment" -ForegroundCo
 Write-Host "Environment: $Environment" -ForegroundColor Yellow
 Write-Host "Location: $Location" -ForegroundColor Yellow
 Write-Host "Subscription: $SubscriptionId" -ForegroundColor Yellow
+Write-Host "Tenant: $TenantId" -ForegroundColor Yellow
 
 # Validate prerequisites
 Write-Host "📋 Validating prerequisites..." -ForegroundColor Blue
@@ -91,14 +110,69 @@ if (-not (Get-Module -ListAvailable -Name Az.Resources)) {
 Write-Host "🔐 Setting up Azure context..." -ForegroundColor Blue
 try {
     $context = Get-AzContext
-    if (-not $context -or $context.Subscription.Id -ne $SubscriptionId) {
-        Write-Host "Connecting to Azure..." -ForegroundColor Yellow
-        Connect-AzAccount -SubscriptionId $SubscriptionId
+    $needsAuthentication = $false
+    
+    # Check if we need to authenticate
+    if (-not $context) {
+        Write-Host "No Azure context found. Authentication required." -ForegroundColor Yellow
+        $needsAuthentication = $true
     }
-    Set-AzContext -SubscriptionId $SubscriptionId | Out-Null
+    elseif ($context.Subscription.Id -ne $SubscriptionId) {
+        Write-Host "Current subscription ($($context.Subscription.Id)) does not match target subscription ($SubscriptionId)." -ForegroundColor Yellow
+        $needsAuthentication = $true
+    }
+    elseif ($context.Tenant.Id -ne $TenantId) {
+        Write-Host "Current tenant ($($context.Tenant.Id)) does not match target tenant ($TenantId)." -ForegroundColor Yellow
+        $needsAuthentication = $true
+    }
+    
+    if ($needsAuthentication) {
+        Write-Host "Connecting to Azure with Tenant ID: $TenantId" -ForegroundColor Yellow
+        Write-Host "This will open an interactive browser window for authentication (MFA supported)." -ForegroundColor Cyan
+        
+        # Use interactive authentication with TenantId - this supports MFA
+        $connectParams = @{
+            TenantId = $TenantId
+            SubscriptionId = $SubscriptionId
+        }
+        
+        # Try browser-based authentication first (better UX for MFA)
+        try {
+            Write-Host "Attempting browser-based authentication..." -ForegroundColor Cyan
+            Connect-AzAccount @connectParams
+        }
+        catch {
+            # Fallback to device authentication if browser auth fails
+            Write-Host "Browser authentication failed. Falling back to device authentication..." -ForegroundColor Yellow
+            Write-Host "You will need to visit a URL and enter a device code." -ForegroundColor Cyan
+            $connectParams.UseDeviceAuthentication = $true
+            Connect-AzAccount @connectParams
+        }
+    }
+    
+    # Ensure we're in the correct subscription and tenant context
+    $finalContext = Set-AzContext -SubscriptionId $SubscriptionId -TenantId $TenantId
+    
+    if ($finalContext.Subscription.Id -ne $SubscriptionId) {
+        throw "Failed to set subscription context to $SubscriptionId"
+    }
+    
+    if ($finalContext.Tenant.Id -ne $TenantId) {
+        throw "Failed to set tenant context to $TenantId"
+    }
+    
+    Write-Host "✅ Successfully authenticated to:" -ForegroundColor Green
+    Write-Host "  Tenant: $($finalContext.Tenant.Id) ($($finalContext.Tenant.Directory))" -ForegroundColor White
+    Write-Host "  Subscription: $($finalContext.Subscription.Id) ($($finalContext.Subscription.Name))" -ForegroundColor White
+    Write-Host "  Account: $($finalContext.Account.Id)" -ForegroundColor White
 }
 catch {
     Write-Error "Failed to authenticate with Azure: $_"
+    Write-Host "Please ensure:" -ForegroundColor Yellow
+    Write-Host "  1. The TenantId ($TenantId) is correct" -ForegroundColor White
+    Write-Host "  2. The SubscriptionId ($SubscriptionId) exists in this tenant" -ForegroundColor White
+    Write-Host "  3. Your account has appropriate permissions" -ForegroundColor White
+    Write-Host "  4. You have completed MFA if required" -ForegroundColor White
     exit 1
 }
 
