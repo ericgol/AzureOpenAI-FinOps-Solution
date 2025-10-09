@@ -133,7 +133,35 @@ The script provides detailed error messages for common issues:
 2. **Authentication**: Interactive login with MFA support
 3. **Parameter File Creation**: Generates deployment parameters
 4. **Infrastructure Deployment**: Deploys Bicep templates to Azure
-5. **Function Code Deployment**: Publishes Azure Functions code
+5. **Function Code Deployment**: Publishes both Azure Function Apps:
+   - **FinOps Data Collector**: Main cost management and data collection function
+   - **EventHub Processor**: Processes APIM telemetry from EventHub to Application Insights
+
+## Function App Architecture
+
+The solution deploys two specialized Azure Function Apps:
+
+### 1. FinOps Data Collector (`finops-data-collector`)
+- **Purpose**: Primary cost management and financial operations
+- **Functions**: Cost analysis, budget monitoring, resource optimization
+- **Triggers**: Timer-based, HTTP endpoints for cost reporting
+- **Integration**: Direct Azure Cost Management API integration
+
+### 2. EventHub Processor (`eventhub-to-appinsights`)
+- **Purpose**: Real-time telemetry processing from API Management
+- **Functions**: EventHub message processing, Application Insights forwarding  
+- **Triggers**: EventHub trigger for APIM telemetry events
+- **Integration**: Processes APIM logs and forwards to Application Insights
+- **Technology**: Uses Azure Monitor OpenTelemetry for enhanced observability
+
+## Deployment Features
+
+- **Parallel Deployment**: Both function apps are deployed simultaneously
+- **Independent Error Handling**: If one deployment fails, the other continues
+- **Progress Tracking**: Real-time status updates for each function app
+- **Deployment Summary**: Comprehensive success/failure reporting
+- **Python Version Detection**: Automatically detects `python` or `python3` commands
+- **Remote Build**: Uses Azure's remote build capability for consistent deployments
 
 ## Next Steps
 
@@ -142,7 +170,9 @@ After successful deployment:
 1. Configure Azure OpenAI service endpoints in API Management
 2. Update APIM policies with your specific requirements
 3. Test API endpoints with sample requests
-4. Set up Power BI reports for cost analysis
+4. **Verify both function apps are running correctly**
+5. Set up Power BI reports for cost analysis
+6. **Monitor EventHub telemetry flow to Application Insights**
 
 For detailed documentation, see: `/docs/`
 

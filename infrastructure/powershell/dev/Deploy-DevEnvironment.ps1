@@ -8,6 +8,13 @@
     This script deploys the complete FinOps solution infrastructure using Azure Bicep templates.
     It's optimized for development environments with minimal cost and resources.
     
+    The deployment includes:
+    - Azure API Management for OpenAI API proxying
+    - Two Azure Function Apps: FinOps Data Collector and EventHub Processor  
+    - EventHub for telemetry streaming
+    - Application Insights for monitoring
+    - Storage Account and Key Vault for secure operations
+    
     The script supports interactive authentication with MFA through browser-based login.
     A valid Azure AD Tenant ID is required for authentication.
 
@@ -239,14 +246,20 @@ if (-not $SkipInfrastructure) {
                 $outputs = $deployment.Outputs
                 $resourceGroupName = $outputs.resourceGroupName.Value
                 $functionAppName = $outputs.functionAppName.Value
+                $eventHubFunctionAppName = $outputs.eventHubFunctionAppName.Value
                 $apimName = $outputs.apimName.Value
                 $storageAccountName = $outputs.storageAccountName.Value
+                $eventHubNamespace = $outputs.eventHubNamespace.Value
+                $eventHubName = $outputs.eventHubName.Value
                 
                 Write-Host "📊 Deployment Results:" -ForegroundColor Yellow
                 Write-Host "  Resource Group: $resourceGroupName" -ForegroundColor White
-                Write-Host "  Function App: $functionAppName" -ForegroundColor White
+                Write-Host "  Main Function App: $functionAppName" -ForegroundColor White
+                Write-Host "  EventHub Function App: $eventHubFunctionAppName" -ForegroundColor White
                 Write-Host "  API Management: $apimName" -ForegroundColor White
                 Write-Host "  Storage Account: $storageAccountName" -ForegroundColor White
+                Write-Host "  EventHub Namespace: $eventHubNamespace" -ForegroundColor White
+                Write-Host "  EventHub: $eventHubName" -ForegroundColor White
                 
                 # Store outputs for function deployment
                 $outputsFile = Join-Path $scriptDir "deployment-outputs.json"
@@ -266,7 +279,7 @@ if (-not $SkipInfrastructure) {
 
 # Deploy function app code
 if (-not $WhatIf -and -not $SkipInfrastructure) {
-    Write-Host "📦 Deploying Function App code..." -ForegroundColor Blue
+    Write-Host "📦 Deploying Function Apps code..." -ForegroundColor Blue
     
     # Check if func core tools is available
     if (-not (Get-Command "func" -ErrorAction SilentlyContinue)) {
@@ -274,33 +287,113 @@ if (-not $WhatIf -and -not $SkipInfrastructure) {
         Write-Host "Run: npm install -g azure-functions-core-tools@4 --unsafe-perm true" -ForegroundColor Yellow
     }
     else {
-        $functionDir = Join-Path $rootDir "src/functions/finops-data-collector"
+        # Define function apps and their source directories
+        $functionApps = @(
+            @{
+                Name = $functionAppName
+                DisplayName = "FinOps Data Collector"
+                SourceDir = "finops-data-collector"
+                Description = "Main data collection and cost management function"
+            },
+            @{
+                Name = $eventHubFunctionAppName
+                DisplayName = "EventHub to Application Insights"
+                SourceDir = "eventhub-to-appinsights"
+                Description = "EventHub telemetry processor for Application Insights"
+            }
+        )
         
-        if (Test-Path $functionDir) {
-            Push-Location $functionDir
-            try {
-                Write-Host "Installing Python dependencies..." -ForegroundColor Yellow
-                python -m pip install -r requirements.txt
-                
-                Write-Host "Publishing function app..." -ForegroundColor Yellow
-                func azure functionapp publish $functionAppName --python
-                
-                Write-Host "✅ Function app deployed successfully!" -ForegroundColor Green
+        $deploymentResults = @()
+        $totalApps = $functionApps.Count
+        $currentApp = 0
+        
+        foreach ($app in $functionApps) {
+            $currentApp++
+            $functionDir = Join-Path $rootDir "src/functions/$($app.SourceDir)"
+            
+            Write-Host "
+📦 [$currentApp/$totalApps] Deploying $($app.DisplayName)..." -ForegroundColor Cyan
+            Write-Host "  Function App: $($app.Name)" -ForegroundColor White
+            Write-Host "  Source: $($app.SourceDir)" -ForegroundColor White
+            Write-Host "  Description: $($app.Description)" -ForegroundColor White
+            
+            $deploymentResult = @{
+                Name = $app.Name
+                DisplayName = $app.DisplayName
+                SourceDir = $app.SourceDir
+                Success = $false
+                Error = $null
             }
-            catch {
-                Write-Warning "Function app deployment failed: $_"
+            
+            if (Test-Path $functionDir) {
+                Push-Location $functionDir
+                try {
+                    Write-Host "  🔍 Installing Python dependencies..." -ForegroundColor Yellow
+                    
+                    # Check for Python and install dependencies
+                    if (Get-Command "python" -ErrorAction SilentlyContinue) {
+                        $pythonCmd = "python"
+                    } elseif (Get-Command "python3" -ErrorAction SilentlyContinue) {
+                        $pythonCmd = "python3"
+                    } else {
+                        throw "Python not found in PATH. Please install Python 3.8 or later."
+                    }
+                    
+                    & $pythonCmd -m pip install -r requirements.txt --quiet
+                    
+                    Write-Host "  🚀 Publishing function app to Azure..." -ForegroundColor Yellow
+                    func azure functionapp publish $($app.Name) --python --build remote
+                    
+                    Write-Host "  ✅ $($app.DisplayName) deployed successfully!" -ForegroundColor Green
+                    $deploymentResult.Success = $true
+                }
+                catch {
+                    $errorMsg = "$($app.DisplayName) deployment failed: $_"
+                    Write-Warning "  ❌ $errorMsg"
+                    $deploymentResult.Error = $_.Exception.Message
+                }
+                finally {
+                    Pop-Location
+                }
             }
-            finally {
-                Pop-Location
+            else {
+                $errorMsg = "Source code not found at $functionDir"
+                Write-Warning "  ❌ $errorMsg"
+                $deploymentResult.Error = $errorMsg
+            }
+            
+            $deploymentResults += $deploymentResult
+        }
+        
+        # Summary of function app deployments
+        Write-Host "
+📊 Function App Deployment Summary:" -ForegroundColor Blue
+        $successCount = 0
+        $failureCount = 0
+        
+        foreach ($result in $deploymentResults) {
+            if ($result.Success) {
+                Write-Host "  ✅ $($result.DisplayName) ($($result.Name))" -ForegroundColor Green
+                $successCount++
+            } else {
+                Write-Host "  ❌ $($result.DisplayName) ($($result.Name)) - $($result.Error)" -ForegroundColor Red
+                $failureCount++
             }
         }
-        else {
-            Write-Warning "Function app source code not found at $functionDir"
+        
+        Write-Host "
+📈 Deployment Statistics:" -ForegroundColor Yellow
+        Write-Host "  Total Function Apps: $totalApps" -ForegroundColor White
+        Write-Host "  Successful: $successCount" -ForegroundColor Green
+        Write-Host "  Failed: $failureCount" -ForegroundColor $(if ($failureCount -eq 0) { 'Green' } else { 'Red' })
+        
+        if ($failureCount -gt 0) {
+            Write-Warning "Some function app deployments failed. Please check the errors above and retry if needed."
         }
     }
 }
 
-Write-Host "🎉 Deployment completed!" -ForegroundColor Green
+Write-Host "🎉 Azure OpenAI FinOps Solution deployment completed!" -ForegroundColor Green
 
 if (-not $WhatIf) {
     Write-Host ""
@@ -308,10 +401,15 @@ if (-not $WhatIf) {
     Write-Host "1. Configure your Azure OpenAI service URL in APIM" -ForegroundColor White
     Write-Host "2. Update APIM policies with your specific requirements" -ForegroundColor White  
     Write-Host "3. Test the API endpoint with sample requests" -ForegroundColor White
-    Write-Host "4. Set up Power BI reports using the stored data" -ForegroundColor White
+    Write-Host "4. Verify both function apps are running correctly" -ForegroundColor White
+    Write-Host "5. Set up Power BI reports using the stored data" -ForegroundColor White
+    Write-Host "6. Monitor EventHub telemetry flow to Application Insights" -ForegroundColor White
     Write-Host ""
     Write-Host "📚 Documentation: $rootDir/docs/" -ForegroundColor Cyan
     Write-Host "🔧 Configuration: $rootDir/src/configs/" -ForegroundColor Cyan
+    Write-Host "🎯 Function Apps:" -ForegroundColor Cyan
+    Write-Host "  • FinOps Data Collector: Handles cost management and data collection" -ForegroundColor White
+    Write-Host "  • EventHub Processor: Forwards APIM telemetry to Application Insights" -ForegroundColor White
 }
 
 Write-Host "🏁 Script completed successfully!" -ForegroundColor Green
