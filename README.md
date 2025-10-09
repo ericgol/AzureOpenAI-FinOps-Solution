@@ -4,7 +4,7 @@ A comprehensive FinOps (Financial Operations) solution for tracking and analyzin
 
 ## Overview
 
-This solution provides cost allocation and usage tracking for Azure OpenAI services consumed through an enterprise APIM gateway facade. It correlates API telemetry with cost data to enable per-user and per-store cost analysis and reporting.
+This solution provides cost allocation and usage tracking for Azure OpenAI services consumed through an enterprise APIM gateway facade. It correlates API telemetry with cost data to enable per-device and per-store cost analysis and reporting.
 
 ## Architecture
 
