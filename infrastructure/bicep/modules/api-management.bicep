@@ -208,6 +208,7 @@ resource chatCompletionsOperation 'Microsoft.ApiManagement/service/apis/operatio
 }
 
 // FinOps telemetry collection policy for the API
+// Note: Variable names use camelCase to avoid APIM policy validation errors with hyphens
 resource finOpsTelemetryPolicy 'Microsoft.ApiManagement/service/apis/policies@2023-05-01-preview' = {
   parent: openAiApi
   name: 'policy'
@@ -216,10 +217,10 @@ resource finOpsTelemetryPolicy 'Microsoft.ApiManagement/service/apis/policies@20
 <policies>
   <inbound>
     <base />
-    <set-variable name="device-id" value="@(context.Request.Headers.GetValueOrDefault("device-id", "unknown"))" />
-    <set-variable name="store-number" value="@(context.Request.Headers.GetValueOrDefault("store-number", "unknown"))" />
-    <set-variable name="request-timestamp" value="@(DateTime.UtcNow)" />
-    <set-variable name="request-id" value="@(Guid.NewGuid())" />
+    <set-variable name="deviceId" value="@(context.Request.Headers.GetValueOrDefault("device-id", "unknown"))" />
+    <set-variable name="storeNumber" value="@(context.Request.Headers.GetValueOrDefault("store-number", "unknown"))" />
+    <set-variable name="requestTimestamp" value="@(DateTime.UtcNow)" />
+    <set-variable name="requestId" value="@(Guid.NewGuid())" />
   </inbound>
   <backend>
     <base />
@@ -228,10 +229,10 @@ resource finOpsTelemetryPolicy 'Microsoft.ApiManagement/service/apis/policies@20
     <base />
     <log-to-eventhub logger-id="applicationinsights">
       @{
-        var deviceId = (string)context.Variables["device-id"];
-        var storeNumber = (string)context.Variables["store-number"];
-        var requestTimestamp = (DateTime)context.Variables["request-timestamp"];
-        var requestId = (string)context.Variables["request-id"];
+        var deviceId = (string)context.Variables["deviceId"];
+        var storeNumber = (string)context.Variables["storeNumber"];
+        var requestTimestamp = (DateTime)context.Variables["requestTimestamp"];
+        var requestId = (string)context.Variables["requestId"];
         var responseTime = (int)(DateTime.UtcNow - requestTimestamp).TotalMilliseconds;
         
         // Extract token usage from response if available
@@ -269,10 +270,10 @@ resource finOpsTelemetryPolicy 'Microsoft.ApiManagement/service/apis/policies@20
     <base />
     <log-to-eventhub logger-id="applicationinsights">
       @{
-        var deviceId = (string)context.Variables["device-id"];
-        var storeNumber = (string)context.Variables["store-number"];
-        var requestTimestamp = (DateTime)context.Variables["request-timestamp"];
-        var requestId = (string)context.Variables["request-id"];
+        var deviceId = (string)context.Variables["deviceId"];
+        var storeNumber = (string)context.Variables["storeNumber"];
+        var requestTimestamp = (DateTime)context.Variables["requestTimestamp"];
+        var requestId = (string)context.Variables["requestId"];
         var responseTime = (int)(DateTime.UtcNow - requestTimestamp).TotalMilliseconds;
         
         return new JObject(
