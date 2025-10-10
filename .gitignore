@@ -62,6 +62,10 @@ Thumbs.db
 # Bicep
 *.bicepstate
 
+# Compiled ARM templates (auto-generated from Bicep)
+# Uncomment the next line if you want to ignore all JSON files in bicep folders
+# infrastructure/bicep/**/*.json
+
 # PowerShell
 *.ps1xml
 
