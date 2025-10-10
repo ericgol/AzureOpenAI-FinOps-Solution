@@ -13,6 +13,11 @@ param projectName string = 'finops-aoai'
 @description('Unique suffix for resource names')
 param uniqueSuffix string = uniqueString(subscription().subscriptionId, projectName, environment)
 
+// Storage account name must be 3-24 chars, lowercase letters and numbers only
+// Transform: 'finops-aoai' + 'dev' + 'sa' + 'uniqueHash' → 'finopsaoaidevsa' + first10chars(hash)
+var cleanProjectName = replace(replace(projectName, '-', ''), '_', '')
+var storageAccountName = take('${cleanProjectName}${environment}sa${take(uniqueSuffix, 10)}', 24)
+
 @description('Resource group name')
 param resourceGroupName string = '${projectName}-${environment}-rg'
 
@@ -71,7 +76,7 @@ module storage 'modules/storage-account.bicep' = {
   scope: rg
   name: 'deploy-storage'
   params: {
-    storageAccountName: '${projectName}${environment}sa${uniqueSuffix}'
+    storageAccountName: storageAccountName
     location: location
     tags: tags
     environment: environment
@@ -226,3 +231,6 @@ output storageAccountName string = storage.outputs.storageAccountName
 output keyVaultName string = keyVault.outputs.keyVaultName
 output environment string = environment
 output location string = location
+
+// Debug output to verify storage account naming
+output debugStorageAccountName string = storageAccountName
