@@ -16,9 +16,6 @@ param loggerName string = 'finops-eventhub-logger'
 @description('Enable buffered logging for better performance')
 param isBuffered bool = true
 
-@description('Common tags for all resources')
-param tags object = {}
-
 // Reference to existing APIM service
 resource apimService 'Microsoft.ApiManagement/service@2023-05-01-preview' existing = {
   name: apimName

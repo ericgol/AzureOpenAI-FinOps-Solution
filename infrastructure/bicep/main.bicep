@@ -191,7 +191,6 @@ module apimEventHubLogger 'modules/apim-eventhub-logger.bicep' = {
     eventHubConnectionString: eventHub.outputs.apimConnectionString
     loggerName: 'finops-eventhub-logger'
     isBuffered: true
-    tags: tags
   }
 }
 
@@ -220,6 +219,7 @@ output functionAppName string = functionApp.outputs.functionAppName
 output eventHubFunctionAppName string = eventHubFunctionApp.outputs.functionAppName
 output eventHubNamespace string = eventHub.outputs.eventHubNamespaceName
 output eventHubName string = eventHub.outputs.eventHubName
+@secure()
 output eventHubApimConnectionString string = eventHub.outputs.apimConnectionString
 output apimLoggerName string = apimEventHubLogger.outputs.loggerName
 output storageAccountName string = storage.outputs.storageAccountName

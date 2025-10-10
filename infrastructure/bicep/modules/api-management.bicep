@@ -100,7 +100,7 @@ resource logAnalyticsWorkspaceIdNamedValue 'Microsoft.ApiManagement/service/name
   parent: apiManagement
   name: 'log-analytics-workspace-id'
   properties: {
-    displayName: 'Log Analytics Workspace ID'
+    displayName: 'LogAnalyticsWorkspaceID'
     value: logAnalyticsWorkspaceId
     secret: false
   }
@@ -313,4 +313,5 @@ output apimId string = apiManagement.id
 output gatewayUrl string = apiManagement.properties.gatewayUrl
 output managementApiUrl string = apiManagement.properties.managementApiUrl
 output principalId string = apiManagement.identity.principalId
+@secure()
 output testSubscriptionKey string = testSubscription.listSecrets().primaryKey

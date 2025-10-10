@@ -98,6 +98,8 @@ resource functionAuthRule 'Microsoft.EventHub/namespaces/eventhubs/authorization
 output eventHubNamespaceName string = eventHubNamespace.name
 output eventHubName string = eventHub.name
 output eventHubId string = eventHub.id
+@secure()
 output apimConnectionString string = apimAuthRule.listKeys().primaryConnectionString
+@secure()
 output functionConnectionString string = functionAuthRule.listKeys().primaryConnectionString
 output eventHubEndpoint string = eventHubNamespace.properties.serviceBusEndpoint
