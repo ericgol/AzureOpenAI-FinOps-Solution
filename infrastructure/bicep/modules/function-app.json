@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.38.33.27573",
-      "templateHash": "12516773542489631605"
+      "templateHash": "3090527849647605514"
     }
   },
   "parameters": {
@@ -71,6 +71,20 @@
       "metadata": {
         "description": "Python version"
       }
+    },
+    "enableVnetIntegration": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable VNet integration"
+      }
+    },
+    "useManagedIdentity": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable managed identity for storage"
+      }
     }
   },
   "resources": [
@@ -111,76 +125,13 @@
           "http20Enabled": true,
           "functionAppScaleLimit": "[if(equals(parameters('environment'), 'prod'), 20, 10)]",
           "minimumElasticInstanceCount": "[if(equals(parameters('environment'), 'prod'), 1, 0)]",
-          "appSettings": [
-            {
-              "name": "AzureWebJobsStorage",
-              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', parameters('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value)]"
-            },
-            {
-              "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
-              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', parameters('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value)]"
-            },
-            {
-              "name": "WEBSITE_CONTENTSHARE",
-              "value": "[toLower(parameters('functionAppName'))]"
-            },
-            {
-              "name": "FUNCTIONS_EXTENSION_VERSION",
-              "value": "~4"
-            },
-            {
-              "name": "FUNCTIONS_WORKER_RUNTIME",
-              "value": "python"
-            },
-            {
-              "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
-              "value": "[format('InstrumentationKey={0};IngestionEndpoint=https://{1}.in.applicationinsights.azure.com/;LiveEndpoint=https://{2}.livediagnostics.monitor.azure.com/', parameters('appInsightsInstrumentationKey'), parameters('location'), parameters('location'))]"
-            },
-            {
-              "name": "LOG_ANALYTICS_WORKSPACE_ID",
-              "value": "[parameters('logAnalyticsWorkspaceId')]"
-            },
-            {
-              "name": "COST_MANAGEMENT_SCOPE",
-              "value": "[parameters('costManagementScope')]"
-            },
-            {
-              "name": "STORAGE_ACCOUNT_NAME",
-              "value": "[parameters('storageAccountName')]"
-            },
-            {
-              "name": "DATA_COLLECTION_INTERVAL",
-              "value": "0 */6 * * * *"
-            },
-            {
-              "name": "ENVIRONMENT",
-              "value": "[parameters('environment')]"
-            },
-            {
-              "name": "WEBSITE_RUN_FROM_PACKAGE",
-              "value": "1"
-            },
-            {
-              "name": "ENABLE_ORYX_BUILD",
-              "value": "true"
-            },
-            {
-              "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
-              "value": "true"
-            },
-            {
-              "name": "BUILD_FLAGS",
-              "value": "UseExpressBuild"
-            },
-            {
-              "name": "XDG_CACHE_HOME",
-              "value": "/tmp/.cache"
-            }
-          ]
+          "appSettings": "[union(createArray(createObject('name', 'FUNCTIONS_EXTENSION_VERSION', 'value', '~4'), createObject('name', 'FUNCTIONS_WORKER_RUNTIME', 'value', 'python'), createObject('name', 'WEBSITE_CONTENTSHARE', 'value', toLower(parameters('functionAppName'))), createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', format('InstrumentationKey={0};IngestionEndpoint=https://{1}.in.applicationinsights.azure.com/;LiveEndpoint=https://{2}.livediagnostics.monitor.azure.com/', parameters('appInsightsInstrumentationKey'), parameters('location'), parameters('location'))), createObject('name', 'LOG_ANALYTICS_WORKSPACE_ID', 'value', parameters('logAnalyticsWorkspaceId')), createObject('name', 'COST_MANAGEMENT_SCOPE', 'value', parameters('costManagementScope')), createObject('name', 'STORAGE_ACCOUNT_NAME', 'value', parameters('storageAccountName')), createObject('name', 'DATA_COLLECTION_INTERVAL', 'value', '0 */6 * * * *'), createObject('name', 'ENVIRONMENT', 'value', parameters('environment')), createObject('name', 'WEBSITE_RUN_FROM_PACKAGE', 'value', '1'), createObject('name', 'ENABLE_ORYX_BUILD', 'value', 'true'), createObject('name', 'SCM_DO_BUILD_DURING_DEPLOYMENT', 'value', 'true'), createObject('name', 'BUILD_FLAGS', 'value', 'UseExpressBuild'), createObject('name', 'XDG_CACHE_HOME', 'value', '/tmp/.cache')), if(parameters('useManagedIdentity'), createArray(createObject('name', 'AzureWebJobsStorage__accountName', 'value', parameters('storageAccountName')), createObject('name', 'AzureWebJobsStorage__credential', 'value', 'managedidentity'), createObject('name', 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING__accountName', 'value', parameters('storageAccountName')), createObject('name', 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING__credential', 'value', 'managedidentity')), createArray(createObject('name', 'AzureWebJobsStorage', 'value', format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', parameters('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value)), createObject('name', 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING', 'value', format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', parameters('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value)))))]",
+          "vnetRouteAllEnabled": "[parameters('enableVnetIntegration')]"
         },
         "httpsOnly": true,
-        "publicNetworkAccess": "[if(not(equals(parameters('subnetId'), '')), 'Disabled', 'Enabled')]",
-        "virtualNetworkSubnetId": "[if(not(equals(parameters('subnetId'), '')), parameters('subnetId'), null())]"
+        "publicNetworkAccess": "[if(parameters('enableVnetIntegration'), 'Disabled', 'Enabled')]",
+        "virtualNetworkSubnetId": "[if(parameters('enableVnetIntegration'), parameters('subnetId'), null())]",
+        "vnetContentShareEnabled": "[parameters('useManagedIdentity')]"
       },
       "dependsOn": [
         "[resourceId('Microsoft.Web/serverfarms', format('{0}-plan', parameters('functionAppName')))]"

@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.38.33.27573",
-      "templateHash": "17194486689733119955"
+      "templateHash": "16174236300097879253"
     }
   },
   "parameters": {
@@ -95,14 +95,7 @@
         "tier": "[parameters('eventHubSku')]",
         "capacity": "[parameters('eventHubCapacity')]"
       },
-      "properties": {
-        "minimumTlsVersion": "1.2",
-        "publicNetworkAccess": "Enabled",
-        "disableLocalAuth": false,
-        "zoneRedundant": "[equals(parameters('environment'), 'prod')]",
-        "isAutoInflateEnabled": "[equals(parameters('environment'), 'prod')]",
-        "maximumThroughputUnits": "[if(equals(parameters('environment'), 'prod'), 10, parameters('eventHubCapacity'))]"
-      }
+      "properties": "[union(createObject('minimumTlsVersion', '1.2', 'publicNetworkAccess', 'Enabled', 'disableLocalAuth', false(), 'zoneRedundant', equals(parameters('environment'), 'prod'), 'isAutoInflateEnabled', equals(parameters('environment'), 'prod')), if(equals(parameters('environment'), 'prod'), createObject('maximumThroughputUnits', 10), createObject()))]"
     },
     "eventHub": {
       "type": "Microsoft.EventHub/namespaces/eventhubs",

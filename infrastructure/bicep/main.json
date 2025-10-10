@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.38.33.27573",
-      "templateHash": "11284355693039247663"
+      "templateHash": "4623287337701669841"
     }
   },
   "parameters": {
@@ -70,9 +70,9 @@
     },
     "enablePrivateNetworking": {
       "type": "bool",
-      "defaultValue": "[equals(parameters('environment'), 'prod')]",
+      "defaultValue": true,
       "metadata": {
-        "description": "Enable private networking for production"
+        "description": "Enable private networking (required for enterprise compliance)"
       }
     },
     "costManagementScope": {
@@ -487,6 +487,15 @@
           },
           "enablePrivateEndpoint": {
             "value": "[parameters('enablePrivateNetworking')]"
+          },
+          "functionSubnetId": {
+            "value": "[reference('networking').outputs.functionSubnetId.value]"
+          },
+          "apimSubnetId": {
+            "value": "[reference('networking').outputs.apimSubnetId.value]"
+          },
+          "privateEndpointSubnetId": {
+            "value": "[reference('networking').outputs.privateEndpointSubnetId.value]"
           }
         },
         "template": {
@@ -496,7 +505,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.38.33.27573",
-              "templateHash": "13436461388630993305"
+              "templateHash": "12988447270820676890"
             }
           },
           "parameters": {
@@ -531,6 +540,27 @@
               "metadata": {
                 "description": "Enable private endpoint"
               }
+            },
+            "functionSubnetId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Function subnet ID for VNet rule"
+              }
+            },
+            "apimSubnetId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "APIM subnet ID for VNet rule"
+              }
+            },
+            "privateEndpointSubnetId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Private endpoint subnet ID"
+              }
             }
           },
           "resources": [
@@ -550,7 +580,8 @@
                 "allowSharedKeyAccess": true,
                 "minimumTlsVersion": "TLS1_2",
                 "supportsHttpsTrafficOnly": true,
-                "networkAcls": "[if(parameters('enablePrivateEndpoint'), createObject('defaultAction', 'Deny', 'bypass', 'AzureServices'), createObject('defaultAction', 'Allow'))]",
+                "publicNetworkAccess": "[if(parameters('enablePrivateEndpoint'), 'Disabled', 'Enabled')]",
+                "networkAcls": "[if(parameters('enablePrivateEndpoint'), createObject('defaultAction', 'Deny', 'bypass', 'AzureServices', 'virtualNetworkRules', createArray(createObject('id', parameters('functionSubnetId'), 'action', 'Allow', 'state', 'Succeeded'), createObject('id', parameters('apimSubnetId'), 'action', 'Allow', 'state', 'Succeeded'))), createObject('defaultAction', 'Allow'))]",
                 "encryption": {
                   "services": {
                     "blob": {
@@ -636,6 +667,87 @@
               "dependsOn": [
                 "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
               ]
+            },
+            {
+              "condition": "[parameters('enablePrivateEndpoint')]",
+              "type": "Microsoft.Network/privateEndpoints",
+              "apiVersion": "2023-09-01",
+              "name": "[format('{0}-blob-pe', parameters('storageAccountName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "subnet": {
+                  "id": "[parameters('privateEndpointSubnetId')]"
+                },
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "[format('{0}-blob-connection', parameters('storageAccountName'))]",
+                    "properties": {
+                      "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+                      "groupIds": [
+                        "blob"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "condition": "[parameters('enablePrivateEndpoint')]",
+              "type": "Microsoft.Network/privateEndpoints",
+              "apiVersion": "2023-09-01",
+              "name": "[format('{0}-file-pe', parameters('storageAccountName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "subnet": {
+                  "id": "[parameters('privateEndpointSubnetId')]"
+                },
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "[format('{0}-file-connection', parameters('storageAccountName'))]",
+                    "properties": {
+                      "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+                      "groupIds": [
+                        "file"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "condition": "[parameters('enablePrivateEndpoint')]",
+              "type": "Microsoft.Network/privateEndpoints",
+              "apiVersion": "2023-09-01",
+              "name": "[format('{0}-table-pe', parameters('storageAccountName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "subnet": {
+                  "id": "[parameters('privateEndpointSubnetId')]"
+                },
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "[format('{0}-table-connection', parameters('storageAccountName'))]",
+                    "properties": {
+                      "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+                      "groupIds": [
+                        "table"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
             }
           ],
           "outputs": {
@@ -667,11 +779,11 @@
         }
       },
       "dependsOn": [
+        "networking",
         "rg"
       ]
     },
     "networking": {
-      "condition": "[parameters('enablePrivateNetworking')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "deploy-networking",
@@ -699,7 +811,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.38.33.27573",
-              "templateHash": "1678747047533486238"
+              "templateHash": "15543165848606324286"
             }
           },
           "parameters": {
@@ -875,9 +987,14 @@
                         },
                         {
                           "service": "Microsoft.KeyVault"
+                        },
+                        {
+                          "service": "Microsoft.Web"
                         }
                       ],
-                      "delegations": []
+                      "delegations": [],
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
                     }
                   },
                   {
@@ -902,7 +1019,9 @@
                             "serviceName": "Microsoft.Web/serverFarms"
                           }
                         }
-                      ]
+                      ],
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
                     }
                   },
                   {
@@ -953,6 +1072,174 @@
         "rg"
       ]
     },
+    "privateDnsZones": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-private-dns-zones",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "vnetId": {
+            "value": "[reference('networking').outputs.vnetId.value]"
+          },
+          "location": {
+            "value": "global"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.38.33.27573",
+              "templateHash": "12866270094928700303"
+            }
+          },
+          "parameters": {
+            "vnetId": {
+              "type": "string",
+              "metadata": {
+                "description": "Virtual network ID to link DNS zones to"
+              }
+            },
+            "location": {
+              "type": "string",
+              "defaultValue": "global",
+              "metadata": {
+                "description": "Location for DNS zones"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Resource tags"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "[format('privatelink.blob.{0}', environment().suffixes.storage)]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2020-06-01",
+              "name": "[format('{0}/{1}', format('privatelink.blob.{0}', environment().suffixes.storage), 'storage-blob-vnet-link')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                  "id": "[parameters('vnetId')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink.blob.{0}', environment().suffixes.storage))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "[format('privatelink.file.{0}', environment().suffixes.storage)]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2020-06-01",
+              "name": "[format('{0}/{1}', format('privatelink.file.{0}', environment().suffixes.storage), 'storage-file-vnet-link')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                  "id": "[parameters('vnetId')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink.file.{0}', environment().suffixes.storage))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "[format('privatelink.table.{0}', environment().suffixes.storage)]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2020-06-01",
+              "name": "[format('{0}/{1}', format('privatelink.table.{0}', environment().suffixes.storage), 'storage-table-vnet-link')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                  "id": "[parameters('vnetId')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink.table.{0}', environment().suffixes.storage))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones",
+              "apiVersion": "2020-06-01",
+              "name": "privatelink.vaultcore.azure.net",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]"
+            },
+            {
+              "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
+              "apiVersion": "2020-06-01",
+              "name": "[format('{0}/{1}', 'privatelink.vaultcore.azure.net', 'keyvault-vnet-link')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "registrationEnabled": false,
+                "virtualNetwork": {
+                  "id": "[parameters('vnetId')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.vaultcore.azure.net')]"
+              ]
+            }
+          ],
+          "outputs": {
+            "storageBlobDnsZoneId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink.blob.{0}', environment().suffixes.storage))]"
+            },
+            "storageFileDnsZoneId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink.file.{0}', environment().suffixes.storage))]"
+            },
+            "storageTableDnsZoneId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/privateDnsZones', format('privatelink.table.{0}', environment().suffixes.storage))]"
+            },
+            "keyVaultDnsZoneId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.vaultcore.azure.net')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "networking",
+        "rg"
+      ]
+    },
     "apim": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
@@ -982,7 +1269,12 @@
           "appInsightsInstrumentationKey": {
             "value": "[reference('appInsights').outputs.instrumentationKey.value]"
           },
-          "subnetId": "[if(parameters('enablePrivateNetworking'), createObject('value', reference('networking').outputs.apimSubnetId.value), createObject('value', ''))]",
+          "appInsightsResourceId": {
+            "value": "[reference('appInsights').outputs.appInsightsId.value]"
+          },
+          "subnetId": {
+            "value": "[reference('networking').outputs.apimSubnetId.value]"
+          },
           "enablePrivateNetworking": {
             "value": "[parameters('enablePrivateNetworking')]"
           }
@@ -995,7 +1287,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.38.33.27573",
-              "templateHash": "6366958400230546674"
+              "templateHash": "7476428423529721345"
             }
           },
           "parameters": {
@@ -1039,6 +1331,13 @@
               "type": "string",
               "metadata": {
                 "description": "Application Insights instrumentation key"
+              }
+            },
+            "appInsightsResourceId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Application Insights resource ID"
               }
             },
             "subnetId": {
@@ -1101,7 +1400,7 @@
                   "instrumentationKey": "[parameters('appInsightsInstrumentationKey')]"
                 },
                 "isBuffered": true,
-                "resourceId": "[format('/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.Insights/components/{2}', subscription().subscriptionId, resourceGroup().name, split(parameters('appInsightsInstrumentationKey'), '/')[8])]"
+                "resourceId": "[if(not(equals(parameters('appInsightsResourceId'), '')), parameters('appInsightsResourceId'), null())]"
               },
               "dependsOn": [
                 "apiManagement"
@@ -1265,7 +1564,7 @@
               "apiVersion": "2023-05-01-preview",
               "name": "[format('{0}/{1}/{2}', parameters('apimName'), 'openai-api', 'policy')]",
               "properties": {
-                "value": "<policies>\n  <inbound>\n    <base />\n    <set-variable name=\"device-id\" value=\"@(context.Request.Headers.GetValueOrDefault(\"device-id\", \"unknown\"))\" />\n    <set-variable name=\"store-number\" value=\"@(context.Request.Headers.GetValueOrDefault(\"store-number\", \"unknown\"))\" />\n    <set-variable name=\"request-timestamp\" value=\"@(DateTime.UtcNow)\" />\n    <set-variable name=\"request-id\" value=\"@(Guid.NewGuid())\" />\n  </inbound>\n  <backend>\n    <base />\n  </backend>\n  <outbound>\n    <base />\n    <log-to-eventhub logger-id=\"applicationinsights\">\n      @{\n        var deviceId = (string)context.Variables[\"device-id\"];\n        var storeNumber = (string)context.Variables[\"store-number\"];\n        var requestTimestamp = (DateTime)context.Variables[\"request-timestamp\"];\n        var requestId = (string)context.Variables[\"request-id\"];\n        var responseTime = (int)(DateTime.UtcNow - requestTimestamp).TotalMilliseconds;\n        \n        // Extract token usage from response if available\n        var tokensUsed = 0;\n        if (context.Response.StatusCode == 200) {\n          try {\n            var responseBody = context.Response.Body?.As<JObject>();\n            if (responseBody != null && responseBody[\"usage\"] != null) {\n              tokensUsed = (int)responseBody[\"usage\"][\"total_tokens\"];\n            }\n          }\n          catch { }\n        }\n        \n        return new JObject(\n          new JProperty(\"timestamp\", requestTimestamp),\n          new JProperty(\"requestId\", requestId),\n          new JProperty(\"deviceId\", deviceId),\n          new JProperty(\"storeNumber\", storeNumber),\n          new JProperty(\"apiName\", context.Api.Name),\n          new JProperty(\"operationName\", context.Operation.Name),\n          new JProperty(\"method\", context.Request.Method),\n          new JProperty(\"url\", context.Request.Url.ToString()),\n          new JProperty(\"statusCode\", context.Response.StatusCode),\n          new JProperty(\"responseTime\", responseTime),\n          new JProperty(\"tokensUsed\", tokensUsed),\n          new JProperty(\"subscriptionId\", context.Subscription?.Id ?? \"\"),\n          new JProperty(\"productId\", context.Product?.Id ?? \"\"),\n          new JProperty(\"resourceId\", \"{{log-analytics-workspace-id}}\")\n        ).ToString();\n      }\n    </log-to-eventhub>\n  </outbound>\n  <on-error>\n    <base />\n    <log-to-eventhub logger-id=\"applicationinsights\">\n      @{\n        var deviceId = (string)context.Variables[\"device-id\"];\n        var storeNumber = (string)context.Variables[\"store-number\"];\n        var requestTimestamp = (DateTime)context.Variables[\"request-timestamp\"];\n        var requestId = (string)context.Variables[\"request-id\"];\n        var responseTime = (int)(DateTime.UtcNow - requestTimestamp).TotalMilliseconds;\n        \n        return new JObject(\n          new JProperty(\"timestamp\", requestTimestamp),\n          new JProperty(\"requestId\", requestId),\n          new JProperty(\"deviceId\", deviceId),\n          new JProperty(\"storeNumber\", storeNumber),\n          new JProperty(\"apiName\", context.Api.Name),\n          new JProperty(\"operationName\", context.Operation.Name),\n          new JProperty(\"method\", context.Request.Method),\n          new JProperty(\"url\", context.Request.Url.ToString()),\n          new JProperty(\"statusCode\", context.Response?.StatusCode ?? 500),\n          new JProperty(\"responseTime\", responseTime),\n          new JProperty(\"tokensUsed\", 0),\n          new JProperty(\"error\", context.LastError?.Message ?? \"Unknown error\"),\n          new JProperty(\"subscriptionId\", context.Subscription?.Id ?? \"\"),\n          new JProperty(\"productId\", context.Product?.Id ?? \"\"),\n          new JProperty(\"resourceId\", \"{{log-analytics-workspace-id}}\")\n        ).ToString();\n      }\n    </log-to-eventhub>\n  </on-error>\n</policies>\n"
+                "value": "<policies>\n  <inbound>\n    <base />\n    <set-variable name=\"deviceId\" value=\"@(context.Request.Headers.GetValueOrDefault(\"device-id\", \"unknown\"))\" />\n    <set-variable name=\"storeNumber\" value=\"@(context.Request.Headers.GetValueOrDefault(\"store-number\", \"unknown\"))\" />\n    <set-variable name=\"requestTimestamp\" value=\"@(DateTime.UtcNow)\" />\n    <set-variable name=\"requestId\" value=\"@(Guid.NewGuid())\" />\n  </inbound>\n  <backend>\n    <base />\n  </backend>\n  <outbound>\n    <base />\n    <log-to-eventhub logger-id=\"applicationinsights\">\n      @{\n        var deviceId = (string)context.Variables[\"deviceId\"];\n        var storeNumber = (string)context.Variables[\"storeNumber\"];\n        var requestTimestamp = (DateTime)context.Variables[\"requestTimestamp\"];\n        var requestId = (string)context.Variables[\"requestId\"];\n        var responseTime = (int)(DateTime.UtcNow - requestTimestamp).TotalMilliseconds;\n        \n        // Extract token usage from response if available\n        var tokensUsed = 0;\n        if (context.Response.StatusCode == 200) {\n          try {\n            var responseBody = context.Response.Body?.As<JObject>();\n            if (responseBody != null && responseBody[\"usage\"] != null) {\n              tokensUsed = (int)responseBody[\"usage\"][\"total_tokens\"];\n            }\n          }\n          catch { }\n        }\n        \n        return new JObject(\n          new JProperty(\"timestamp\", requestTimestamp),\n          new JProperty(\"requestId\", requestId),\n          new JProperty(\"deviceId\", deviceId),\n          new JProperty(\"storeNumber\", storeNumber),\n          new JProperty(\"apiName\", context.Api.Name),\n          new JProperty(\"operationName\", context.Operation.Name),\n          new JProperty(\"method\", context.Request.Method),\n          new JProperty(\"url\", context.Request.Url.ToString()),\n          new JProperty(\"statusCode\", context.Response.StatusCode),\n          new JProperty(\"responseTime\", responseTime),\n          new JProperty(\"tokensUsed\", tokensUsed),\n          new JProperty(\"subscriptionId\", context.Subscription?.Id ?? \"\"),\n          new JProperty(\"productId\", context.Product?.Id ?? \"\"),\n          new JProperty(\"resourceId\", \"{{log-analytics-workspace-id}}\")\n        ).ToString();\n      }\n    </log-to-eventhub>\n  </outbound>\n  <on-error>\n    <base />\n    <log-to-eventhub logger-id=\"applicationinsights\">\n      @{\n        var deviceId = (string)context.Variables[\"deviceId\"];\n        var storeNumber = (string)context.Variables[\"storeNumber\"];\n        var requestTimestamp = (DateTime)context.Variables[\"requestTimestamp\"];\n        var requestId = (string)context.Variables[\"requestId\"];\n        var responseTime = (int)(DateTime.UtcNow - requestTimestamp).TotalMilliseconds;\n        \n        return new JObject(\n          new JProperty(\"timestamp\", requestTimestamp),\n          new JProperty(\"requestId\", requestId),\n          new JProperty(\"deviceId\", deviceId),\n          new JProperty(\"storeNumber\", storeNumber),\n          new JProperty(\"apiName\", context.Api.Name),\n          new JProperty(\"operationName\", context.Operation.Name),\n          new JProperty(\"method\", context.Request.Method),\n          new JProperty(\"url\", context.Request.Url.ToString()),\n          new JProperty(\"statusCode\", context.Response?.StatusCode ?? 500),\n          new JProperty(\"responseTime\", responseTime),\n          new JProperty(\"tokensUsed\", 0),\n          new JProperty(\"error\", context.LastError?.Message ?? \"Unknown error\"),\n          new JProperty(\"subscriptionId\", context.Subscription?.Id ?? \"\"),\n          new JProperty(\"productId\", context.Product?.Id ?? \"\"),\n          new JProperty(\"resourceId\", \"{{log-analytics-workspace-id}}\")\n        ).ToString();\n      }\n    </log-to-eventhub>\n  </on-error>\n</policies>\n"
               },
               "dependsOn": [
                 "openAiApi"
@@ -1356,7 +1655,15 @@
           "environment": {
             "value": "[parameters('environment')]"
           },
-          "subnetId": "[if(parameters('enablePrivateNetworking'), createObject('value', reference('networking').outputs.functionSubnetId.value), createObject('value', ''))]"
+          "subnetId": {
+            "value": "[reference('networking').outputs.functionSubnetId.value]"
+          },
+          "enableVnetIntegration": {
+            "value": "[parameters('enablePrivateNetworking')]"
+          },
+          "useManagedIdentity": {
+            "value": "[parameters('enablePrivateNetworking')]"
+          }
         },
         "template": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
@@ -1365,7 +1672,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.38.33.27573",
-              "templateHash": "12516773542489631605"
+              "templateHash": "3090527849647605514"
             }
           },
           "parameters": {
@@ -1431,6 +1738,20 @@
               "metadata": {
                 "description": "Python version"
               }
+            },
+            "enableVnetIntegration": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Enable VNet integration"
+              }
+            },
+            "useManagedIdentity": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Enable managed identity for storage"
+              }
             }
           },
           "resources": [
@@ -1471,76 +1792,13 @@
                   "http20Enabled": true,
                   "functionAppScaleLimit": "[if(equals(parameters('environment'), 'prod'), 20, 10)]",
                   "minimumElasticInstanceCount": "[if(equals(parameters('environment'), 'prod'), 1, 0)]",
-                  "appSettings": [
-                    {
-                      "name": "AzureWebJobsStorage",
-                      "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', parameters('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value)]"
-                    },
-                    {
-                      "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
-                      "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', parameters('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value)]"
-                    },
-                    {
-                      "name": "WEBSITE_CONTENTSHARE",
-                      "value": "[toLower(parameters('functionAppName'))]"
-                    },
-                    {
-                      "name": "FUNCTIONS_EXTENSION_VERSION",
-                      "value": "~4"
-                    },
-                    {
-                      "name": "FUNCTIONS_WORKER_RUNTIME",
-                      "value": "python"
-                    },
-                    {
-                      "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
-                      "value": "[format('InstrumentationKey={0};IngestionEndpoint=https://{1}.in.applicationinsights.azure.com/;LiveEndpoint=https://{2}.livediagnostics.monitor.azure.com/', parameters('appInsightsInstrumentationKey'), parameters('location'), parameters('location'))]"
-                    },
-                    {
-                      "name": "LOG_ANALYTICS_WORKSPACE_ID",
-                      "value": "[parameters('logAnalyticsWorkspaceId')]"
-                    },
-                    {
-                      "name": "COST_MANAGEMENT_SCOPE",
-                      "value": "[parameters('costManagementScope')]"
-                    },
-                    {
-                      "name": "STORAGE_ACCOUNT_NAME",
-                      "value": "[parameters('storageAccountName')]"
-                    },
-                    {
-                      "name": "DATA_COLLECTION_INTERVAL",
-                      "value": "0 */6 * * * *"
-                    },
-                    {
-                      "name": "ENVIRONMENT",
-                      "value": "[parameters('environment')]"
-                    },
-                    {
-                      "name": "WEBSITE_RUN_FROM_PACKAGE",
-                      "value": "1"
-                    },
-                    {
-                      "name": "ENABLE_ORYX_BUILD",
-                      "value": "true"
-                    },
-                    {
-                      "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
-                      "value": "true"
-                    },
-                    {
-                      "name": "BUILD_FLAGS",
-                      "value": "UseExpressBuild"
-                    },
-                    {
-                      "name": "XDG_CACHE_HOME",
-                      "value": "/tmp/.cache"
-                    }
-                  ]
+                  "appSettings": "[union(createArray(createObject('name', 'FUNCTIONS_EXTENSION_VERSION', 'value', '~4'), createObject('name', 'FUNCTIONS_WORKER_RUNTIME', 'value', 'python'), createObject('name', 'WEBSITE_CONTENTSHARE', 'value', toLower(parameters('functionAppName'))), createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', format('InstrumentationKey={0};IngestionEndpoint=https://{1}.in.applicationinsights.azure.com/;LiveEndpoint=https://{2}.livediagnostics.monitor.azure.com/', parameters('appInsightsInstrumentationKey'), parameters('location'), parameters('location'))), createObject('name', 'LOG_ANALYTICS_WORKSPACE_ID', 'value', parameters('logAnalyticsWorkspaceId')), createObject('name', 'COST_MANAGEMENT_SCOPE', 'value', parameters('costManagementScope')), createObject('name', 'STORAGE_ACCOUNT_NAME', 'value', parameters('storageAccountName')), createObject('name', 'DATA_COLLECTION_INTERVAL', 'value', '0 */6 * * * *'), createObject('name', 'ENVIRONMENT', 'value', parameters('environment')), createObject('name', 'WEBSITE_RUN_FROM_PACKAGE', 'value', '1'), createObject('name', 'ENABLE_ORYX_BUILD', 'value', 'true'), createObject('name', 'SCM_DO_BUILD_DURING_DEPLOYMENT', 'value', 'true'), createObject('name', 'BUILD_FLAGS', 'value', 'UseExpressBuild'), createObject('name', 'XDG_CACHE_HOME', 'value', '/tmp/.cache')), if(parameters('useManagedIdentity'), createArray(createObject('name', 'AzureWebJobsStorage__accountName', 'value', parameters('storageAccountName')), createObject('name', 'AzureWebJobsStorage__credential', 'value', 'managedidentity'), createObject('name', 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING__accountName', 'value', parameters('storageAccountName')), createObject('name', 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING__credential', 'value', 'managedidentity')), createArray(createObject('name', 'AzureWebJobsStorage', 'value', format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', parameters('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value)), createObject('name', 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING', 'value', format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', parameters('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value)))))]",
+                  "vnetRouteAllEnabled": "[parameters('enableVnetIntegration')]"
                 },
                 "httpsOnly": true,
-                "publicNetworkAccess": "[if(not(equals(parameters('subnetId'), '')), 'Disabled', 'Enabled')]",
-                "virtualNetworkSubnetId": "[if(not(equals(parameters('subnetId'), '')), parameters('subnetId'), null())]"
+                "publicNetworkAccess": "[if(parameters('enableVnetIntegration'), 'Disabled', 'Enabled')]",
+                "virtualNetworkSubnetId": "[if(parameters('enableVnetIntegration'), parameters('subnetId'), null())]",
+                "vnetContentShareEnabled": "[parameters('useManagedIdentity')]"
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Web/serverfarms', format('{0}-plan', parameters('functionAppName')))]"
@@ -1607,6 +1865,105 @@
         "appInsights",
         "logAnalytics",
         "networking",
+        "rg",
+        "storage"
+      ]
+    },
+    "storageManagedIdentity": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-storage-managed-identity",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "storageAccountId": {
+            "value": "[reference('storage').outputs.storageAccountId.value]"
+          },
+          "functionAppPrincipalId": {
+            "value": "[reference('functionApp').outputs.functionAppPrincipalId.value]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.38.33.27573",
+              "templateHash": "763845296252906305"
+            }
+          },
+          "parameters": {
+            "storageAccountId": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage account resource ID"
+              }
+            },
+            "functionAppPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "Function App principal ID"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Storage/storageAccounts/{0}', split(parameters('storageAccountId'), '/')[8])]",
+              "name": "[guid(parameters('storageAccountId'), parameters('functionAppPrincipalId'), resourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'))]",
+              "properties": {
+                "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]",
+                "principalId": "[parameters('functionAppPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Storage/storageAccounts/{0}', split(parameters('storageAccountId'), '/')[8])]",
+              "name": "[guid(parameters('storageAccountId'), parameters('functionAppPrincipalId'), resourceId('Microsoft.Authorization/roleDefinitions', '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'))]",
+              "properties": {
+                "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3')]",
+                "principalId": "[parameters('functionAppPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Storage/storageAccounts/{0}', split(parameters('storageAccountId'), '/')[8])]",
+              "name": "[guid(parameters('storageAccountId'), parameters('functionAppPrincipalId'), resourceId('Microsoft.Authorization/roleDefinitions', '0c867c2a-1d8c-454a-a3db-ab2ea1bdc8bb'))]",
+              "properties": {
+                "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', '0c867c2a-1d8c-454a-a3db-ab2ea1bdc8bb')]",
+                "principalId": "[parameters('functionAppPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              }
+            }
+          ],
+          "outputs": {
+            "blobRoleAssignmentId": {
+              "type": "string",
+              "value": "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', split(parameters('storageAccountId'), '/')[8]), 'Microsoft.Authorization/roleAssignments', guid(parameters('storageAccountId'), parameters('functionAppPrincipalId'), resourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')))]"
+            },
+            "tableRoleAssignmentId": {
+              "type": "string",
+              "value": "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', split(parameters('storageAccountId'), '/')[8]), 'Microsoft.Authorization/roleAssignments', guid(parameters('storageAccountId'), parameters('functionAppPrincipalId'), resourceId('Microsoft.Authorization/roleDefinitions', '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3')))]"
+            },
+            "fileRoleAssignmentId": {
+              "type": "string",
+              "value": "[extensionResourceId(resourceId('Microsoft.Storage/storageAccounts', split(parameters('storageAccountId'), '/')[8]), 'Microsoft.Authorization/roleAssignments', guid(parameters('storageAccountId'), parameters('functionAppPrincipalId'), resourceId('Microsoft.Authorization/roleDefinitions', '0c867c2a-1d8c-454a-a3db-ab2ea1bdc8bb')))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "functionApp",
         "rg",
         "storage"
       ]
@@ -1729,7 +2086,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.38.33.27573",
-              "templateHash": "17194486689733119955"
+              "templateHash": "16174236300097879253"
             }
           },
           "parameters": {
@@ -1818,14 +2175,7 @@
                 "tier": "[parameters('eventHubSku')]",
                 "capacity": "[parameters('eventHubCapacity')]"
               },
-              "properties": {
-                "minimumTlsVersion": "1.2",
-                "publicNetworkAccess": "Enabled",
-                "disableLocalAuth": false,
-                "zoneRedundant": "[equals(parameters('environment'), 'prod')]",
-                "isAutoInflateEnabled": "[equals(parameters('environment'), 'prod')]",
-                "maximumThroughputUnits": "[if(equals(parameters('environment'), 'prod'), 10, parameters('eventHubCapacity'))]"
-              }
+              "properties": "[union(createObject('minimumTlsVersion', '1.2', 'publicNetworkAccess', 'Enabled', 'disableLocalAuth', false(), 'zoneRedundant', equals(parameters('environment'), 'prod'), 'isAutoInflateEnabled', equals(parameters('environment'), 'prod')), if(equals(parameters('environment'), 'prod'), createObject('maximumThroughputUnits', 10), createObject()))]"
             },
             "eventHub": {
               "type": "Microsoft.EventHub/namespaces/eventhubs",
@@ -1942,7 +2292,9 @@
           "environment": {
             "value": "[parameters('environment')]"
           },
-          "subnetId": "[if(parameters('enablePrivateNetworking'), createObject('value', reference('networking').outputs.functionSubnetId.value), createObject('value', ''))]",
+          "subnetId": {
+            "value": "[reference('networking').outputs.functionSubnetId.value]"
+          },
           "enablePrivateNetworking": {
             "value": "[parameters('enablePrivateNetworking')]"
           }
@@ -2293,7 +2645,9 @@
           "enablePrivateEndpoint": {
             "value": "[parameters('enablePrivateNetworking')]"
           },
-          "subnetId": "[if(parameters('enablePrivateNetworking'), createObject('value', reference('networking').outputs.privateEndpointSubnetId.value), createObject('value', ''))]"
+          "subnetId": {
+            "value": "[reference('networking').outputs.privateEndpointSubnetId.value]"
+          }
         },
         "template": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
