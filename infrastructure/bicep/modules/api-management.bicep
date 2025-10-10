@@ -18,6 +18,9 @@ param logAnalyticsWorkspaceId string
 @description('Application Insights instrumentation key')
 param appInsightsInstrumentationKey string
 
+@description('Application Insights resource ID')
+param appInsightsResourceId string = ''
+
 @description('Subnet ID for private networking')
 param subnetId string = ''
 
@@ -53,6 +56,7 @@ resource apiManagement 'Microsoft.ApiManagement/service@2023-05-01-preview' = {
 }
 
 // Logger for Application Insights
+// Note: resourceId must be the full Application Insights resource ID, not derived from instrumentationKey
 resource appInsightsLogger 'Microsoft.ApiManagement/service/loggers@2023-05-01-preview' = {
   parent: apiManagement
   name: 'applicationinsights'
@@ -62,7 +66,7 @@ resource appInsightsLogger 'Microsoft.ApiManagement/service/loggers@2023-05-01-p
       instrumentationKey: appInsightsInstrumentationKey
     }
     isBuffered: true
-    resourceId: '/subscriptions/${subscription().subscriptionId}/resourceGroups/${resourceGroup().name}/providers/Microsoft.Insights/components/${split(appInsightsInstrumentationKey, '/')[8]}'
+    resourceId: appInsightsResourceId != '' ? appInsightsResourceId : null
   }
 }
 

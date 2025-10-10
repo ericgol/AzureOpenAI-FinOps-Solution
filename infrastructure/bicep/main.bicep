@@ -120,6 +120,7 @@ module apim 'modules/api-management.bicep' = {
     sku: apimSku
     logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
     appInsightsInstrumentationKey: appInsights.outputs.instrumentationKey
+    appInsightsResourceId: appInsights.outputs.appInsightsId
     subnetId: networking.outputs.apimSubnetId
     enablePrivateNetworking: enablePrivateNetworking
   }
