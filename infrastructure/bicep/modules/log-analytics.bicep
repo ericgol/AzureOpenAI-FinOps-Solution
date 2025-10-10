@@ -45,56 +45,38 @@ resource finOpsApiCallsTable 'Microsoft.OperationalInsights/workspaces/tables@20
         {
           name: 'TimeGenerated'
           type: 'datetime'
-          isDefaultDisplay: true
-          isHidden: false
         }
         {
           name: 'deviceId'
           type: 'string'
-          isDefaultDisplay: true
-          isHidden: false
         }
         {
           name: 'storeNumber'
           type: 'string'
-          isDefaultDisplay: true
-          isHidden: false
         }
         {
           name: 'ApiName'
           type: 'string'
-          isDefaultDisplay: true
-          isHidden: false
         }
         {
           name: 'RequestId'
           type: 'string'
-          isDefaultDisplay: false
-          isHidden: false
         }
         {
           name: 'ResponseTime'
           type: 'int'
-          isDefaultDisplay: true
-          isHidden: false
         }
         {
           name: 'StatusCode'
           type: 'int'
-          isDefaultDisplay: true
-          isHidden: false
         }
         {
           name: 'TokensUsed'
           type: 'int'
-          isDefaultDisplay: true
-          isHidden: false
         }
         {
           name: 'ResourceId'
           type: 'string'
-          isDefaultDisplay: false
-          isHidden: false
         }
       ]
     }
@@ -112,62 +94,42 @@ resource finOpsCostDataTable 'Microsoft.OperationalInsights/workspaces/tables@20
         {
           name: 'TimeGenerated'
           type: 'datetime'
-          isDefaultDisplay: true
-          isHidden: false
         }
         {
           name: 'Date'
           type: 'datetime'
-          isDefaultDisplay: true
-          isHidden: false
         }
         {
           name: 'ResourceId'
           type: 'string'
-          isDefaultDisplay: true
-          isHidden: false
         }
         {
           name: 'ResourceName'
           type: 'string'
-          isDefaultDisplay: true
-          isHidden: false
         }
         {
           name: 'Cost'
           type: 'real'
-          isDefaultDisplay: true
-          isHidden: false
         }
         {
           name: 'Currency'
           type: 'string'
-          isDefaultDisplay: false
-          isHidden: false
         }
         {
           name: 'deviceId'
           type: 'string'
-          isDefaultDisplay: true
-          isHidden: false
         }
         {
           name: 'storeNumber'
           type: 'string'
-          isDefaultDisplay: true
-          isHidden: false
         }
         {
           name: 'AllocatedCost'
           type: 'real'
-          isDefaultDisplay: true
-          isHidden: false
         }
         {
           name: 'UsageShare'
           type: 'real'
-          isDefaultDisplay: false
-          isHidden: false
         }
       ]
     }
