@@ -92,8 +92,6 @@ module storage 'modules/storage-account.bicep' = {
     tags: tags
     environment: environment
     enablePrivateEndpoint: enablePrivateNetworking
-    functionSubnetId: networking.outputs.functionSubnetId
-    apimSubnetId: networking.outputs.apimSubnetId
     privateEndpointSubnetId: networking.outputs.privateEndpointSubnetId
   }
 }
@@ -242,6 +240,27 @@ module keyVault 'modules/key-vault.bicep' = {
     enablePrivateEndpoint: enablePrivateNetworking
     subnetId: networking.outputs.privateEndpointSubnetId
   }
+}
+
+// Apply storage network restrictions after Function App and private networking are ready
+// This prevents the Function App file share creation failure by allowing initial public access
+module storageNetworkRestriction 'modules/storage-network-restriction.bicep' = {
+  scope: rg
+  name: 'deploy-storage-network-restriction'
+  params: {
+    storageAccountName: storage.outputs.storageAccountName
+    location: location
+    enablePrivateEndpoint: enablePrivateNetworking
+    functionSubnetId: networking.outputs.functionSubnetId
+    apimSubnetId: networking.outputs.apimSubnetId
+    resourceGroupName: rg.name
+  }
+  dependsOn: [
+    functionApp
+    eventHubFunctionApp
+    privateDnsZones
+    storageManagedIdentity
+  ]
 }
 
 // Outputs for reference by other deployments or scripts

@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.38.33.27573",
-      "templateHash": "8641812901991414590"
+      "templateHash": "2223876508042545649"
     }
   },
   "parameters": {
@@ -777,12 +777,6 @@
           "enablePrivateEndpoint": {
             "value": "[parameters('enablePrivateNetworking')]"
           },
-          "functionSubnetId": {
-            "value": "[reference('networking').outputs.functionSubnetId.value]"
-          },
-          "apimSubnetId": {
-            "value": "[reference('networking').outputs.apimSubnetId.value]"
-          },
           "privateEndpointSubnetId": {
             "value": "[reference('networking').outputs.privateEndpointSubnetId.value]"
           }
@@ -794,7 +788,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.38.33.27573",
-              "templateHash": "12988447270820676890"
+              "templateHash": "10824340429513672254"
             }
           },
           "parameters": {
@@ -830,20 +824,6 @@
                 "description": "Enable private endpoint"
               }
             },
-            "functionSubnetId": {
-              "type": "string",
-              "defaultValue": "",
-              "metadata": {
-                "description": "Function subnet ID for VNet rule"
-              }
-            },
-            "apimSubnetId": {
-              "type": "string",
-              "defaultValue": "",
-              "metadata": {
-                "description": "APIM subnet ID for VNet rule"
-              }
-            },
             "privateEndpointSubnetId": {
               "type": "string",
               "defaultValue": "",
@@ -869,8 +849,11 @@
                 "allowSharedKeyAccess": true,
                 "minimumTlsVersion": "TLS1_2",
                 "supportsHttpsTrafficOnly": true,
-                "publicNetworkAccess": "[if(parameters('enablePrivateEndpoint'), 'Disabled', 'Enabled')]",
-                "networkAcls": "[if(parameters('enablePrivateEndpoint'), createObject('defaultAction', 'Deny', 'bypass', 'AzureServices', 'virtualNetworkRules', createArray(createObject('id', parameters('functionSubnetId'), 'action', 'Allow', 'state', 'Succeeded'), createObject('id', parameters('apimSubnetId'), 'action', 'Allow', 'state', 'Succeeded'))), createObject('defaultAction', 'Allow'))]",
+                "publicNetworkAccess": "Enabled",
+                "networkAcls": {
+                  "defaultAction": "Allow",
+                  "bypass": "AzureServices"
+                },
                 "encryption": {
                   "services": {
                     "blob": {
@@ -2823,6 +2806,176 @@
         "functionApp",
         "networking",
         "rg"
+      ]
+    },
+    "storageNetworkRestriction": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-storage-network-restriction",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "storageAccountName": {
+            "value": "[reference('storage').outputs.storageAccountName.value]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "enablePrivateEndpoint": {
+            "value": "[parameters('enablePrivateNetworking')]"
+          },
+          "functionSubnetId": {
+            "value": "[reference('networking').outputs.functionSubnetId.value]"
+          },
+          "apimSubnetId": {
+            "value": "[reference('networking').outputs.apimSubnetId.value]"
+          },
+          "resourceGroupName": {
+            "value": "[parameters('resourceGroupName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.38.33.27573",
+              "templateHash": "4260260204777128189"
+            }
+          },
+          "parameters": {
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "Storage account name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for deployment script"
+              }
+            },
+            "enablePrivateEndpoint": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Enable private endpoint restrictions"
+              }
+            },
+            "functionSubnetId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Function subnet ID for VNet rule"
+              }
+            },
+            "apimSubnetId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "APIM subnet ID for VNet rule"
+              }
+            },
+            "resourceGroupName": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource group name"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[format('{0}-script-identity', parameters('storageAccountName'))]",
+              "location": "[parameters('location')]"
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "name": "[guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-script-identity', parameters('storageAccountName'))), resourceId('Microsoft.Authorization/roleDefinitions', '17d1049b-9a84-46fb-8f53-869881c3d3ab'))]",
+              "properties": {
+                "roleDefinitionId": "[resourceId('Microsoft.Authorization/roleDefinitions', '17d1049b-9a84-46fb-8f53-869881c3d3ab')]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-script-identity', parameters('storageAccountName'))), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-script-identity', parameters('storageAccountName')))]"
+              ]
+            },
+            {
+              "condition": "[parameters('enablePrivateEndpoint')]",
+              "type": "Microsoft.Resources/deploymentScripts",
+              "apiVersion": "2023-08-01",
+              "name": "[format('{0}-network-update', parameters('storageAccountName'))]",
+              "location": "[parameters('location')]",
+              "kind": "AzureCLI",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-script-identity', parameters('storageAccountName'))))]": {}
+                }
+              },
+              "properties": {
+                "azCliVersion": "2.45.0",
+                "timeout": "PT30M",
+                "retentionInterval": "PT1H",
+                "scriptContent": "      echo \"Updating storage account network rules...\"\n      echo \"Storage Account: $STORAGE_ACCOUNT_NAME\"\n      echo \"Resource Group: $RESOURCE_GROUP_NAME\"\n      \n      # Update storage account to disable public access and add VNet rules\n      az storage account update \\\n        --name \"$STORAGE_ACCOUNT_NAME\" \\\n        --resource-group \"$RESOURCE_GROUP_NAME\" \\\n        --public-network-access Disabled \\\n        --default-action Deny \\\n        --bypass AzureServices\n      \n      echo \"Updated storage account public access and default action\"\n      \n      # Add VNet rules for function and APIM subnets\n      if [ -n \"$FUNCTION_SUBNET_ID\" ]; then\n        echo \"Adding function subnet rule: $FUNCTION_SUBNET_ID\"\n        az storage account network-rule add \\\n          --account-name \"$STORAGE_ACCOUNT_NAME\" \\\n          --resource-group \"$RESOURCE_GROUP_NAME\" \\\n          --subnet \"$FUNCTION_SUBNET_ID\"\n      fi\n      \n      if [ -n \"$APIM_SUBNET_ID\" ]; then\n        echo \"Adding APIM subnet rule: $APIM_SUBNET_ID\"\n        az storage account network-rule add \\\n          --account-name \"$STORAGE_ACCOUNT_NAME\" \\\n          --resource-group \"$RESOURCE_GROUP_NAME\" \\\n          --subnet \"$APIM_SUBNET_ID\"\n      fi\n      \n      echo \"Storage network rules updated successfully\"\n    ",
+                "environmentVariables": [
+                  {
+                    "name": "STORAGE_ACCOUNT_NAME",
+                    "value": "[parameters('storageAccountName')]"
+                  },
+                  {
+                    "name": "RESOURCE_GROUP_NAME",
+                    "value": "[parameters('resourceGroupName')]"
+                  },
+                  {
+                    "name": "FUNCTION_SUBNET_ID",
+                    "value": "[parameters('functionSubnetId')]"
+                  },
+                  {
+                    "name": "APIM_SUBNET_ID",
+                    "value": "[parameters('apimSubnetId')]"
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-script-identity', parameters('storageAccountName'))), resourceId('Microsoft.Authorization/roleDefinitions', '17d1049b-9a84-46fb-8f53-869881c3d3ab')))]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-script-identity', parameters('storageAccountName')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "storageAccountName": {
+              "type": "string",
+              "value": "[parameters('storageAccountName')]"
+            },
+            "networkAclsApplied": {
+              "type": "bool",
+              "value": "[parameters('enablePrivateEndpoint')]"
+            },
+            "scriptIdentityId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-script-identity', parameters('storageAccountName')))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "eventHubFunctionApp",
+        "functionApp",
+        "networking",
+        "privateDnsZones",
+        "rg",
+        "storage",
+        "storageManagedIdentity"
       ]
     }
   },

@@ -14,12 +14,6 @@ param environment string
 @description('Enable private endpoint')
 param enablePrivateEndpoint bool = false
 
-@description('Function subnet ID for VNet rule')
-param functionSubnetId string = ''
-
-@description('APIM subnet ID for VNet rule')
-param apimSubnetId string = ''
-
 @description('Private endpoint subnet ID')
 param privateEndpointSubnetId string = ''
 
@@ -38,24 +32,12 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
     allowSharedKeyAccess: true // Keep enabled for Function App compatibility during transition
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
-    publicNetworkAccess: enablePrivateEndpoint ? 'Disabled' : 'Enabled'
-    networkAcls: enablePrivateEndpoint ? {
-      defaultAction: 'Deny'
-      bypass: 'AzureServices'
-      virtualNetworkRules: [
-        {
-          id: functionSubnetId
-          action: 'Allow'
-          state: 'Succeeded'
-        }
-        {
-          id: apimSubnetId
-          action: 'Allow'
-          state: 'Succeeded'
-        }
-      ]
-    } : {
+    // Initially enable public access to allow Function App file share creation
+    // Will be restricted later via separate update operation
+    publicNetworkAccess: 'Enabled' 
+    networkAcls: {
       defaultAction: 'Allow'
+      bypass: 'AzureServices'
     }
     encryption: {
       services: {
