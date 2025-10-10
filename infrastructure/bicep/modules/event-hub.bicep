@@ -36,6 +36,7 @@ param partitionCount int = 2
 param environment string
 
 // EventHub Namespace
+// Note: maximumThroughputUnits can only be set when isAutoInflateEnabled is true
 resource eventHubNamespace 'Microsoft.EventHub/namespaces@2023-01-01-preview' = {
   name: eventHubNamespaceName
   location: location
@@ -45,14 +46,18 @@ resource eventHubNamespace 'Microsoft.EventHub/namespaces@2023-01-01-preview' = 
     tier: eventHubSku
     capacity: eventHubCapacity
   }
-  properties: {
-    minimumTlsVersion: '1.2'
-    publicNetworkAccess: 'Enabled'
-    disableLocalAuth: false
-    zoneRedundant: environment == 'prod'
-    isAutoInflateEnabled: environment == 'prod'
-    maximumThroughputUnits: environment == 'prod' ? 10 : eventHubCapacity
-  }
+  properties: union(
+    {
+      minimumTlsVersion: '1.2'
+      publicNetworkAccess: 'Enabled'
+      disableLocalAuth: false
+      zoneRedundant: environment == 'prod'
+      isAutoInflateEnabled: environment == 'prod'
+    },
+    environment == 'prod' ? {
+      maximumThroughputUnits: 10
+    } : {}
+  )
 }
 
 // EventHub
