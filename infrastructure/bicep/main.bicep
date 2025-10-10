@@ -101,7 +101,7 @@ module apim 'modules/api-management.bicep' = {
     sku: apimSku
     logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
     appInsightsInstrumentationKey: appInsights.outputs.instrumentationKey
-    subnetId: enablePrivateNetworking ? networking.outputs.apimSubnetId : ''
+    subnetId: enablePrivateNetworking ? networking!.outputs.apimSubnetId : ''
     enablePrivateNetworking: enablePrivateNetworking
   }
 }
@@ -119,7 +119,32 @@ module functionApp 'modules/function-app.bicep' = {
     logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
     costManagementScope: costManagementScope
     environment: environment
-    subnetId: enablePrivateNetworking ? networking.outputs.functionSubnetId : ''
+    subnetId: enablePrivateNetworking ? networking!.outputs.functionSubnetId : ''
+  }
+}
+
+// Role assignments for Function App managed identity
+// Cost Management Reader role for accessing cost data (subscription scope)
+resource costManagementReaderRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  name: '72fafb9e-0641-4937-9268-a91bfd8191a4' // Cost Management Reader
+}
+
+resource costManagementRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(subscription().id, functionApp.name, costManagementReaderRole.id)
+  properties: {
+    roleDefinitionId: costManagementReaderRole.id
+    principalId: functionApp.outputs.functionAppPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Deploy resource group scoped role assignments
+module functionAppRoleAssignments 'modules/role-assignments.bicep' = {
+  scope: rg
+  name: 'deploy-function-role-assignments'
+  params: {
+    functionAppPrincipalId: functionApp.outputs.functionAppPrincipalId
+    functionAppName: functionApp.outputs.functionAppName
   }
 }
 
@@ -151,7 +176,7 @@ module eventHubFunctionApp 'modules/eventhub-function-app.bicep' = {
     eventHubConnectionString: eventHub.outputs.functionConnectionString
     eventHubName: eventHub.outputs.eventHubName
     environment: environment
-    subnetId: enablePrivateNetworking ? networking.outputs.functionSubnetId : ''
+    subnetId: enablePrivateNetworking ? networking!.outputs.functionSubnetId : ''
     enablePrivateNetworking: enablePrivateNetworking
   }
 }
@@ -160,10 +185,6 @@ module eventHubFunctionApp 'modules/eventhub-function-app.bicep' = {
 module apimEventHubLogger 'modules/apim-eventhub-logger.bicep' = {
   scope: rg
   name: 'deploy-apim-eventhub-logger'
-  dependsOn: [
-    apim
-    eventHub
-  ]
   params: {
     apimName: apim.outputs.apimName
     eventHubName: eventHub.outputs.eventHubName
@@ -184,7 +205,7 @@ module keyVault 'modules/key-vault.bicep' = {
     tags: tags
     functionAppPrincipalId: functionApp.outputs.functionAppPrincipalId
     enablePrivateEndpoint: enablePrivateNetworking
-    subnetId: enablePrivateNetworking ? networking.outputs.privateEndpointSubnetId : ''
+    subnetId: enablePrivateNetworking ? networking!.outputs.privateEndpointSubnetId : ''
   }
 }
 
