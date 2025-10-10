@@ -169,6 +169,7 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
 }
 
 // Diagnostic settings for Function App
+// Note: Diagnostic settings depend on Log Analytics workspace being active
 resource functionAppDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   scope: functionApp
   name: 'finops-function-diagnostics'
@@ -176,11 +177,11 @@ resource functionAppDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-0
     workspaceId: logAnalyticsWorkspaceId
     logs: [
       {
-        category: 'FunctionAppLogs'
+        categoryGroup: 'allLogs'
         enabled: true
         retentionPolicy: {
-          enabled: false
-          days: 0
+          enabled: true
+          days: environment == 'prod' ? 730 : 90
         }
       }
     ]
@@ -189,8 +190,8 @@ resource functionAppDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-0
         category: 'AllMetrics'
         enabled: true
         retentionPolicy: {
-          enabled: false
-          days: 0
+          enabled: true
+          days: environment == 'prod' ? 730 : 90
         }
       }
     ]

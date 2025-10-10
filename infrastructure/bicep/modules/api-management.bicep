@@ -27,6 +27,9 @@ param subnetId string = ''
 @description('Enable private networking')
 param enablePrivateNetworking bool = false
 
+@description('Environment for retention settings')
+param environment string = 'dev'
+
 @description('Publisher email')
 param publisherEmail string = 'admin@contoso.com'
 
@@ -71,6 +74,7 @@ resource appInsightsLogger 'Microsoft.ApiManagement/service/loggers@2023-05-01-p
 }
 
 // Diagnostic settings for APIM
+// Note: Diagnostic settings depend on Log Analytics workspace being active
 resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   scope: apiManagement
   name: 'finops-diagnostics'
@@ -81,8 +85,8 @@ resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
         categoryGroup: 'allLogs'
         enabled: true
         retentionPolicy: {
-          enabled: false
-          days: 0
+          enabled: true
+          days: environment == 'prod' ? 730 : 90
         }
       }
     ]
@@ -91,8 +95,8 @@ resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
         category: 'AllMetrics'
         enabled: true
         retentionPolicy: {
-          enabled: false
-          days: 0
+          enabled: true
+          days: environment == 'prod' ? 730 : 90
         }
       }
     ]

@@ -6,7 +6,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.38.33.27573",
-      "templateHash": "4623287337701669841"
+      "templateHash": "8641812901991414590"
     }
   },
   "parameters": {
@@ -462,6 +462,295 @@
         "rg"
       ]
     },
+    "networking": {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "deploy-networking",
+      "resourceGroup": "[parameters('resourceGroupName')]",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "vnetName": {
+            "value": "[format('{0}-{1}-vnet-{2}', parameters('projectName'), parameters('environment'), parameters('uniqueSuffix'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "tags": {
+            "value": "[parameters('tags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.38.33.27573",
+              "templateHash": "15543165848606324286"
+            }
+          },
+          "parameters": {
+            "vnetName": {
+              "type": "string",
+              "metadata": {
+                "description": "Virtual Network name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for VNet"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Resource tags"
+              }
+            },
+            "vnetAddressSpace": {
+              "type": "string",
+              "defaultValue": "10.0.0.0/16",
+              "metadata": {
+                "description": "VNet address space"
+              }
+            },
+            "apimSubnetAddressSpace": {
+              "type": "string",
+              "defaultValue": "10.0.1.0/24",
+              "metadata": {
+                "description": "APIM subnet address space"
+              }
+            },
+            "functionSubnetAddressSpace": {
+              "type": "string",
+              "defaultValue": "10.0.2.0/24",
+              "metadata": {
+                "description": "Function App subnet address space"
+              }
+            },
+            "privateEndpointSubnetAddressSpace": {
+              "type": "string",
+              "defaultValue": "10.0.3.0/24",
+              "metadata": {
+                "description": "Private endpoint subnet address space"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2023-09-01",
+              "name": "[format('{0}-apim-nsg', parameters('vnetName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "AllowHTTPS",
+                    "properties": {
+                      "protocol": "Tcp",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "443",
+                      "sourceAddressPrefix": "Internet",
+                      "destinationAddressPrefix": "*",
+                      "access": "Allow",
+                      "priority": 1000,
+                      "direction": "Inbound"
+                    }
+                  },
+                  {
+                    "name": "AllowHTTP",
+                    "properties": {
+                      "protocol": "Tcp",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "80",
+                      "sourceAddressPrefix": "Internet",
+                      "destinationAddressPrefix": "*",
+                      "access": "Allow",
+                      "priority": 1010,
+                      "direction": "Inbound"
+                    }
+                  },
+                  {
+                    "name": "AllowAPIMManagement",
+                    "properties": {
+                      "protocol": "Tcp",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "3443",
+                      "sourceAddressPrefix": "ApiManagement",
+                      "destinationAddressPrefix": "VirtualNetwork",
+                      "access": "Allow",
+                      "priority": 1020,
+                      "direction": "Inbound"
+                    }
+                  },
+                  {
+                    "name": "AllowLoadBalancer",
+                    "properties": {
+                      "protocol": "*",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "*",
+                      "sourceAddressPrefix": "AzureLoadBalancer",
+                      "destinationAddressPrefix": "*",
+                      "access": "Allow",
+                      "priority": 1030,
+                      "direction": "Inbound"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2023-09-01",
+              "name": "[format('{0}-function-nsg', parameters('vnetName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "AllowHTTPS",
+                    "properties": {
+                      "protocol": "Tcp",
+                      "sourcePortRange": "*",
+                      "destinationPortRange": "443",
+                      "sourceAddressPrefix": "Internet",
+                      "destinationAddressPrefix": "*",
+                      "access": "Allow",
+                      "priority": 1000,
+                      "direction": "Inbound"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.Network/networkSecurityGroups",
+              "apiVersion": "2023-09-01",
+              "name": "[format('{0}-pe-nsg', parameters('vnetName'))]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "securityRules": []
+              }
+            },
+            {
+              "type": "Microsoft.Network/virtualNetworks",
+              "apiVersion": "2023-09-01",
+              "name": "[parameters('vnetName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "[parameters('vnetAddressSpace')]"
+                  ]
+                },
+                "subnets": [
+                  {
+                    "name": "apim-subnet",
+                    "properties": {
+                      "addressPrefix": "[parameters('apimSubnetAddressSpace')]",
+                      "networkSecurityGroup": {
+                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-apim-nsg', parameters('vnetName')))]"
+                      },
+                      "serviceEndpoints": [
+                        {
+                          "service": "Microsoft.Storage"
+                        },
+                        {
+                          "service": "Microsoft.KeyVault"
+                        },
+                        {
+                          "service": "Microsoft.Web"
+                        }
+                      ],
+                      "delegations": [],
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                  },
+                  {
+                    "name": "function-subnet",
+                    "properties": {
+                      "addressPrefix": "[parameters('functionSubnetAddressSpace')]",
+                      "networkSecurityGroup": {
+                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-function-nsg', parameters('vnetName')))]"
+                      },
+                      "serviceEndpoints": [
+                        {
+                          "service": "Microsoft.Storage"
+                        },
+                        {
+                          "service": "Microsoft.KeyVault"
+                        }
+                      ],
+                      "delegations": [
+                        {
+                          "name": "Microsoft.Web/serverFarms",
+                          "properties": {
+                            "serviceName": "Microsoft.Web/serverFarms"
+                          }
+                        }
+                      ],
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                  },
+                  {
+                    "name": "private-endpoint-subnet",
+                    "properties": {
+                      "addressPrefix": "[parameters('privateEndpointSubnetAddressSpace')]",
+                      "networkSecurityGroup": {
+                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-pe-nsg', parameters('vnetName')))]"
+                      },
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-apim-nsg', parameters('vnetName')))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-function-nsg', parameters('vnetName')))]",
+                "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-pe-nsg', parameters('vnetName')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "vnetId": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
+            },
+            "vnetName": {
+              "type": "string",
+              "value": "[parameters('vnetName')]"
+            },
+            "apimSubnetId": {
+              "type": "string",
+              "value": "[format('{0}/subnets/apim-subnet', resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')))]"
+            },
+            "functionSubnetId": {
+              "type": "string",
+              "value": "[format('{0}/subnets/function-subnet', resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')))]"
+            },
+            "privateEndpointSubnetId": {
+              "type": "string",
+              "value": "[format('{0}/subnets/private-endpoint-subnet', resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')))]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "rg"
+      ]
+    },
     "storage": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
@@ -783,295 +1072,6 @@
         "rg"
       ]
     },
-    "networking": {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2025-04-01",
-      "name": "deploy-networking",
-      "resourceGroup": "[parameters('resourceGroupName')]",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "vnetName": {
-            "value": "[format('{0}-{1}-vnet-{2}', parameters('projectName'), parameters('environment'), parameters('uniqueSuffix'))]"
-          },
-          "location": {
-            "value": "[parameters('location')]"
-          },
-          "tags": {
-            "value": "[parameters('tags')]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.38.33.27573",
-              "templateHash": "15543165848606324286"
-            }
-          },
-          "parameters": {
-            "vnetName": {
-              "type": "string",
-              "metadata": {
-                "description": "Virtual Network name"
-              }
-            },
-            "location": {
-              "type": "string",
-              "metadata": {
-                "description": "Location for VNet"
-              }
-            },
-            "tags": {
-              "type": "object",
-              "defaultValue": {},
-              "metadata": {
-                "description": "Resource tags"
-              }
-            },
-            "vnetAddressSpace": {
-              "type": "string",
-              "defaultValue": "10.0.0.0/16",
-              "metadata": {
-                "description": "VNet address space"
-              }
-            },
-            "apimSubnetAddressSpace": {
-              "type": "string",
-              "defaultValue": "10.0.1.0/24",
-              "metadata": {
-                "description": "APIM subnet address space"
-              }
-            },
-            "functionSubnetAddressSpace": {
-              "type": "string",
-              "defaultValue": "10.0.2.0/24",
-              "metadata": {
-                "description": "Function App subnet address space"
-              }
-            },
-            "privateEndpointSubnetAddressSpace": {
-              "type": "string",
-              "defaultValue": "10.0.3.0/24",
-              "metadata": {
-                "description": "Private endpoint subnet address space"
-              }
-            }
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Network/networkSecurityGroups",
-              "apiVersion": "2023-09-01",
-              "name": "[format('{0}-apim-nsg', parameters('vnetName'))]",
-              "location": "[parameters('location')]",
-              "tags": "[parameters('tags')]",
-              "properties": {
-                "securityRules": [
-                  {
-                    "name": "AllowHTTPS",
-                    "properties": {
-                      "protocol": "Tcp",
-                      "sourcePortRange": "*",
-                      "destinationPortRange": "443",
-                      "sourceAddressPrefix": "Internet",
-                      "destinationAddressPrefix": "*",
-                      "access": "Allow",
-                      "priority": 1000,
-                      "direction": "Inbound"
-                    }
-                  },
-                  {
-                    "name": "AllowHTTP",
-                    "properties": {
-                      "protocol": "Tcp",
-                      "sourcePortRange": "*",
-                      "destinationPortRange": "80",
-                      "sourceAddressPrefix": "Internet",
-                      "destinationAddressPrefix": "*",
-                      "access": "Allow",
-                      "priority": 1010,
-                      "direction": "Inbound"
-                    }
-                  },
-                  {
-                    "name": "AllowAPIMManagement",
-                    "properties": {
-                      "protocol": "Tcp",
-                      "sourcePortRange": "*",
-                      "destinationPortRange": "3443",
-                      "sourceAddressPrefix": "ApiManagement",
-                      "destinationAddressPrefix": "VirtualNetwork",
-                      "access": "Allow",
-                      "priority": 1020,
-                      "direction": "Inbound"
-                    }
-                  },
-                  {
-                    "name": "AllowLoadBalancer",
-                    "properties": {
-                      "protocol": "*",
-                      "sourcePortRange": "*",
-                      "destinationPortRange": "*",
-                      "sourceAddressPrefix": "AzureLoadBalancer",
-                      "destinationAddressPrefix": "*",
-                      "access": "Allow",
-                      "priority": 1030,
-                      "direction": "Inbound"
-                    }
-                  }
-                ]
-              }
-            },
-            {
-              "type": "Microsoft.Network/networkSecurityGroups",
-              "apiVersion": "2023-09-01",
-              "name": "[format('{0}-function-nsg', parameters('vnetName'))]",
-              "location": "[parameters('location')]",
-              "tags": "[parameters('tags')]",
-              "properties": {
-                "securityRules": [
-                  {
-                    "name": "AllowHTTPS",
-                    "properties": {
-                      "protocol": "Tcp",
-                      "sourcePortRange": "*",
-                      "destinationPortRange": "443",
-                      "sourceAddressPrefix": "Internet",
-                      "destinationAddressPrefix": "*",
-                      "access": "Allow",
-                      "priority": 1000,
-                      "direction": "Inbound"
-                    }
-                  }
-                ]
-              }
-            },
-            {
-              "type": "Microsoft.Network/networkSecurityGroups",
-              "apiVersion": "2023-09-01",
-              "name": "[format('{0}-pe-nsg', parameters('vnetName'))]",
-              "location": "[parameters('location')]",
-              "tags": "[parameters('tags')]",
-              "properties": {
-                "securityRules": []
-              }
-            },
-            {
-              "type": "Microsoft.Network/virtualNetworks",
-              "apiVersion": "2023-09-01",
-              "name": "[parameters('vnetName')]",
-              "location": "[parameters('location')]",
-              "tags": "[parameters('tags')]",
-              "properties": {
-                "addressSpace": {
-                  "addressPrefixes": [
-                    "[parameters('vnetAddressSpace')]"
-                  ]
-                },
-                "subnets": [
-                  {
-                    "name": "apim-subnet",
-                    "properties": {
-                      "addressPrefix": "[parameters('apimSubnetAddressSpace')]",
-                      "networkSecurityGroup": {
-                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-apim-nsg', parameters('vnetName')))]"
-                      },
-                      "serviceEndpoints": [
-                        {
-                          "service": "Microsoft.Storage"
-                        },
-                        {
-                          "service": "Microsoft.KeyVault"
-                        },
-                        {
-                          "service": "Microsoft.Web"
-                        }
-                      ],
-                      "delegations": [],
-                      "privateEndpointNetworkPolicies": "Disabled",
-                      "privateLinkServiceNetworkPolicies": "Enabled"
-                    }
-                  },
-                  {
-                    "name": "function-subnet",
-                    "properties": {
-                      "addressPrefix": "[parameters('functionSubnetAddressSpace')]",
-                      "networkSecurityGroup": {
-                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-function-nsg', parameters('vnetName')))]"
-                      },
-                      "serviceEndpoints": [
-                        {
-                          "service": "Microsoft.Storage"
-                        },
-                        {
-                          "service": "Microsoft.KeyVault"
-                        }
-                      ],
-                      "delegations": [
-                        {
-                          "name": "Microsoft.Web/serverFarms",
-                          "properties": {
-                            "serviceName": "Microsoft.Web/serverFarms"
-                          }
-                        }
-                      ],
-                      "privateEndpointNetworkPolicies": "Disabled",
-                      "privateLinkServiceNetworkPolicies": "Enabled"
-                    }
-                  },
-                  {
-                    "name": "private-endpoint-subnet",
-                    "properties": {
-                      "addressPrefix": "[parameters('privateEndpointSubnetAddressSpace')]",
-                      "networkSecurityGroup": {
-                        "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-pe-nsg', parameters('vnetName')))]"
-                      },
-                      "privateEndpointNetworkPolicies": "Disabled",
-                      "privateLinkServiceNetworkPolicies": "Enabled"
-                    }
-                  }
-                ]
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-apim-nsg', parameters('vnetName')))]",
-                "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-function-nsg', parameters('vnetName')))]",
-                "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-pe-nsg', parameters('vnetName')))]"
-              ]
-            }
-          ],
-          "outputs": {
-            "vnetId": {
-              "type": "string",
-              "value": "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
-            },
-            "vnetName": {
-              "type": "string",
-              "value": "[parameters('vnetName')]"
-            },
-            "apimSubnetId": {
-              "type": "string",
-              "value": "[format('{0}/subnets/apim-subnet', resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')))]"
-            },
-            "functionSubnetId": {
-              "type": "string",
-              "value": "[format('{0}/subnets/function-subnet', resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')))]"
-            },
-            "privateEndpointSubnetId": {
-              "type": "string",
-              "value": "[format('{0}/subnets/private-endpoint-subnet', resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName')))]"
-            }
-          }
-        }
-      },
-      "dependsOn": [
-        "rg"
-      ]
-    },
     "privateDnsZones": {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
@@ -1277,6 +1277,9 @@
           },
           "enablePrivateNetworking": {
             "value": "[parameters('enablePrivateNetworking')]"
+          },
+          "environment": {
+            "value": "[parameters('environment')]"
           }
         },
         "template": {
@@ -1287,7 +1290,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.38.33.27573",
-              "templateHash": "7476428423529721345"
+              "templateHash": "10937846466553873963"
             }
           },
           "parameters": {
@@ -1354,6 +1357,13 @@
                 "description": "Enable private networking"
               }
             },
+            "environment": {
+              "type": "string",
+              "defaultValue": "dev",
+              "metadata": {
+                "description": "Environment for retention settings"
+              }
+            },
             "publisherEmail": {
               "type": "string",
               "defaultValue": "admin@contoso.com",
@@ -1418,8 +1428,8 @@
                     "categoryGroup": "allLogs",
                     "enabled": true,
                     "retentionPolicy": {
-                      "enabled": false,
-                      "days": 0
+                      "enabled": true,
+                      "days": "[if(equals(parameters('environment'), 'prod'), 730, 90)]"
                     }
                   }
                 ],
@@ -1428,8 +1438,8 @@
                     "category": "AllMetrics",
                     "enabled": true,
                     "retentionPolicy": {
-                      "enabled": false,
-                      "days": 0
+                      "enabled": true,
+                      "days": "[if(equals(parameters('environment'), 'prod'), 730, 90)]"
                     }
                   }
                 ]
@@ -1672,7 +1682,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.38.33.27573",
-              "templateHash": "3090527849647605514"
+              "templateHash": "6538033959008065861"
             }
           },
           "parameters": {
@@ -1813,11 +1823,11 @@
                 "workspaceId": "[parameters('logAnalyticsWorkspaceId')]",
                 "logs": [
                   {
-                    "category": "FunctionAppLogs",
+                    "categoryGroup": "allLogs",
                     "enabled": true,
                     "retentionPolicy": {
-                      "enabled": false,
-                      "days": 0
+                      "enabled": true,
+                      "days": "[if(equals(parameters('environment'), 'prod'), 730, 90)]"
                     }
                   }
                 ],
@@ -1826,8 +1836,8 @@
                     "category": "AllMetrics",
                     "enabled": true,
                     "retentionPolicy": {
-                      "enabled": false,
-                      "days": 0
+                      "enabled": true,
+                      "days": "[if(equals(parameters('environment'), 'prod'), 730, 90)]"
                     }
                   }
                 ]
@@ -2072,7 +2082,9 @@
           "tags": {
             "value": "[parameters('tags')]"
           },
-          "eventHubSku": "[if(equals(parameters('environment'), 'prod'), createObject('value', 'Standard'), createObject('value', 'Basic'))]",
+          "eventHubSku": {
+            "value": "Standard"
+          },
           "eventHubCapacity": "[if(equals(parameters('environment'), 'prod'), createObject('value', 2), createObject('value', 1))]",
           "environment": {
             "value": "[parameters('environment')]"

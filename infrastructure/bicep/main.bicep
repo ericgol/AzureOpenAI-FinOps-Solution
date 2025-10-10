@@ -71,6 +71,17 @@ module appInsights 'modules/application-insights.bicep' = {
   }
 }
 
+// Deploy Virtual Network (always deployed for enterprise compliance)
+module networking 'modules/networking.bicep' = {
+  scope: rg
+  name: 'deploy-networking'
+  params: {
+    vnetName: '${projectName}-${environment}-vnet-${uniqueSuffix}'
+    location: location
+    tags: tags
+  }
+}
+
 // Deploy Storage Account
 module storage 'modules/storage-account.bicep' = {
   scope: rg
@@ -84,17 +95,6 @@ module storage 'modules/storage-account.bicep' = {
     functionSubnetId: networking.outputs.functionSubnetId
     apimSubnetId: networking.outputs.apimSubnetId
     privateEndpointSubnetId: networking.outputs.privateEndpointSubnetId
-  }
-}
-
-// Deploy Virtual Network (always deployed for enterprise compliance)
-module networking 'modules/networking.bicep' = {
-  scope: rg
-  name: 'deploy-networking'
-  params: {
-    vnetName: '${projectName}-${environment}-vnet-${uniqueSuffix}'
-    location: location
-    tags: tags
   }
 }
 
@@ -123,7 +123,9 @@ module apim 'modules/api-management.bicep' = {
     appInsightsResourceId: appInsights.outputs.appInsightsId
     subnetId: networking.outputs.apimSubnetId
     enablePrivateNetworking: enablePrivateNetworking
+    environment: environment
   }
+  // Dependencies are automatically inferred from parameter references
 }
 
 // Deploy Azure Function App
@@ -143,6 +145,7 @@ module functionApp 'modules/function-app.bicep' = {
     enableVnetIntegration: enablePrivateNetworking
     useManagedIdentity: enablePrivateNetworking
   }
+  // Dependencies are automatically inferred from parameter references
 }
 
 // Role assignments for Function App managed identity
