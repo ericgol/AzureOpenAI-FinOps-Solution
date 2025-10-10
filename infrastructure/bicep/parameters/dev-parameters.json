@@ -1,0 +1,24 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "parameters": {
+    "enablePrivateNetworking": {
+      "value": false
+    },
+    "costManagementScope": {
+      "value": "/subscriptions/95a22456-68e3-4e17-8ae7-acc414c02c64"
+    },
+    "apimSku": {
+      "value": "Developer"
+    },
+    "location": {
+      "value": "West US 3"
+    },
+    "projectName": {
+      "value": "pike-finops"
+    },
+    "environment": {
+      "value": "dev"
+    }
+  },
+  "contentVersion": "1.0.0.0"
+}

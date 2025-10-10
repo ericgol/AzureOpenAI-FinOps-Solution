@@ -1,0 +1,244 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.38.33.27573",
+      "templateHash": "12516773542489631605"
+    }
+  },
+  "parameters": {
+    "functionAppName": {
+      "type": "string",
+      "metadata": {
+        "description": "Function App name"
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "Location for Function App"
+      }
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {},
+      "metadata": {
+        "description": "Resource tags"
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Storage account name for Function App"
+      }
+    },
+    "appInsightsInstrumentationKey": {
+      "type": "string",
+      "metadata": {
+        "description": "Application Insights instrumentation key"
+      }
+    },
+    "logAnalyticsWorkspaceId": {
+      "type": "string",
+      "metadata": {
+        "description": "Log Analytics workspace ID"
+      }
+    },
+    "costManagementScope": {
+      "type": "string",
+      "metadata": {
+        "description": "Cost Management scope"
+      }
+    },
+    "environment": {
+      "type": "string",
+      "metadata": {
+        "description": "Environment name"
+      }
+    },
+    "subnetId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Subnet ID for private networking"
+      }
+    },
+    "pythonVersion": {
+      "type": "string",
+      "defaultValue": "3.11",
+      "metadata": {
+        "description": "Python version"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}-plan', parameters('functionAppName'))]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "sku": {
+        "name": "[if(equals(parameters('environment'), 'prod'), 'P1v3', 'Y1')]",
+        "tier": "[if(equals(parameters('environment'), 'prod'), 'PremiumV3', 'Dynamic')]"
+      },
+      "properties": {
+        "reserved": true
+      },
+      "kind": "linux"
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2023-01-01",
+      "name": "[parameters('functionAppName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "kind": "functionapp,linux",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', format('{0}-plan', parameters('functionAppName')))]",
+        "reserved": true,
+        "siteConfig": {
+          "linuxFxVersion": "[format('Python|{0}', parameters('pythonVersion'))]",
+          "alwaysOn": "[equals(parameters('environment'), 'prod')]",
+          "ftpsState": "Disabled",
+          "minTlsVersion": "1.2",
+          "scmMinTlsVersion": "1.2",
+          "http20Enabled": true,
+          "functionAppScaleLimit": "[if(equals(parameters('environment'), 'prod'), 20, 10)]",
+          "minimumElasticInstanceCount": "[if(equals(parameters('environment'), 'prod'), 1, 0)]",
+          "appSettings": [
+            {
+              "name": "AzureWebJobsStorage",
+              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', parameters('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value)]"
+            },
+            {
+              "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+              "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};EndpointSuffix={1};AccountKey={2}', parameters('storageAccountName'), environment().suffixes.storage, listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').keys[0].value)]"
+            },
+            {
+              "name": "WEBSITE_CONTENTSHARE",
+              "value": "[toLower(parameters('functionAppName'))]"
+            },
+            {
+              "name": "FUNCTIONS_EXTENSION_VERSION",
+              "value": "~4"
+            },
+            {
+              "name": "FUNCTIONS_WORKER_RUNTIME",
+              "value": "python"
+            },
+            {
+              "name": "APPLICATIONINSIGHTS_CONNECTION_STRING",
+              "value": "[format('InstrumentationKey={0};IngestionEndpoint=https://{1}.in.applicationinsights.azure.com/;LiveEndpoint=https://{2}.livediagnostics.monitor.azure.com/', parameters('appInsightsInstrumentationKey'), parameters('location'), parameters('location'))]"
+            },
+            {
+              "name": "LOG_ANALYTICS_WORKSPACE_ID",
+              "value": "[parameters('logAnalyticsWorkspaceId')]"
+            },
+            {
+              "name": "COST_MANAGEMENT_SCOPE",
+              "value": "[parameters('costManagementScope')]"
+            },
+            {
+              "name": "STORAGE_ACCOUNT_NAME",
+              "value": "[parameters('storageAccountName')]"
+            },
+            {
+              "name": "DATA_COLLECTION_INTERVAL",
+              "value": "0 */6 * * * *"
+            },
+            {
+              "name": "ENVIRONMENT",
+              "value": "[parameters('environment')]"
+            },
+            {
+              "name": "WEBSITE_RUN_FROM_PACKAGE",
+              "value": "1"
+            },
+            {
+              "name": "ENABLE_ORYX_BUILD",
+              "value": "true"
+            },
+            {
+              "name": "SCM_DO_BUILD_DURING_DEPLOYMENT",
+              "value": "true"
+            },
+            {
+              "name": "BUILD_FLAGS",
+              "value": "UseExpressBuild"
+            },
+            {
+              "name": "XDG_CACHE_HOME",
+              "value": "/tmp/.cache"
+            }
+          ]
+        },
+        "httpsOnly": true,
+        "publicNetworkAccess": "[if(not(equals(parameters('subnetId'), '')), 'Disabled', 'Enabled')]",
+        "virtualNetworkSubnetId": "[if(not(equals(parameters('subnetId'), '')), parameters('subnetId'), null())]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', format('{0}-plan', parameters('functionAppName')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Insights/diagnosticSettings",
+      "apiVersion": "2021-05-01-preview",
+      "scope": "[format('Microsoft.Web/sites/{0}', parameters('functionAppName'))]",
+      "name": "finops-function-diagnostics",
+      "properties": {
+        "workspaceId": "[parameters('logAnalyticsWorkspaceId')]",
+        "logs": [
+          {
+            "category": "FunctionAppLogs",
+            "enabled": true,
+            "retentionPolicy": {
+              "enabled": false,
+              "days": 0
+            }
+          }
+        ],
+        "metrics": [
+          {
+            "category": "AllMetrics",
+            "enabled": true,
+            "retentionPolicy": {
+              "enabled": false,
+              "days": 0
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "functionAppName": {
+      "type": "string",
+      "value": "[parameters('functionAppName')]"
+    },
+    "functionAppId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+    },
+    "functionAppUrl": {
+      "type": "string",
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-01-01').defaultHostName)]"
+    },
+    "functionAppPrincipalId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Web/sites', parameters('functionAppName')), '2023-01-01', 'full').identity.principalId]"
+    },
+    "appServicePlanId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.Web/serverfarms', format('{0}-plan', parameters('functionAppName')))]"
+    }
+  }
+}
