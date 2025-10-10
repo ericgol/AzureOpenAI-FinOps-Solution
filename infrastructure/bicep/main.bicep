@@ -33,8 +33,8 @@ param tags object = {
 @allowed(['Developer', 'Premium'])
 param apimSku string = 'Developer'
 
-@description('Enable private networking for production')
-param enablePrivateNetworking bool = environment == 'prod'
+@description('Enable private networking (required for enterprise compliance)')
+param enablePrivateNetworking bool = true
 
 @description('Cost Management scope (subscription or resource group)')
 param costManagementScope string = subscription().id
@@ -81,16 +81,30 @@ module storage 'modules/storage-account.bicep' = {
     tags: tags
     environment: environment
     enablePrivateEndpoint: enablePrivateNetworking
+    functionSubnetId: networking.outputs.functionSubnetId
+    apimSubnetId: networking.outputs.apimSubnetId
+    privateEndpointSubnetId: networking.outputs.privateEndpointSubnetId
   }
 }
 
-// Deploy Virtual Network (for private networking)
-module networking 'modules/networking.bicep' = if (enablePrivateNetworking) {
+// Deploy Virtual Network (always deployed for enterprise compliance)
+module networking 'modules/networking.bicep' = {
   scope: rg
   name: 'deploy-networking'
   params: {
     vnetName: '${projectName}-${environment}-vnet-${uniqueSuffix}'
     location: location
+    tags: tags
+  }
+}
+
+// Deploy Private DNS Zones
+module privateDnsZones 'modules/private-dns-zones.bicep' = {
+  scope: rg
+  name: 'deploy-private-dns-zones'
+  params: {
+    vnetId: networking.outputs.vnetId
+    location: 'global'
     tags: tags
   }
 }
@@ -106,7 +120,7 @@ module apim 'modules/api-management.bicep' = {
     sku: apimSku
     logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
     appInsightsInstrumentationKey: appInsights.outputs.instrumentationKey
-    subnetId: enablePrivateNetworking ? networking!.outputs.apimSubnetId : ''
+    subnetId: networking.outputs.apimSubnetId
     enablePrivateNetworking: enablePrivateNetworking
   }
 }
@@ -124,7 +138,9 @@ module functionApp 'modules/function-app.bicep' = {
     logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
     costManagementScope: costManagementScope
     environment: environment
-    subnetId: enablePrivateNetworking ? networking!.outputs.functionSubnetId : ''
+    subnetId: networking.outputs.functionSubnetId
+    enableVnetIntegration: enablePrivateNetworking
+    useManagedIdentity: enablePrivateNetworking
   }
 }
 
@@ -140,6 +156,16 @@ resource costManagementRoleAssignment 'Microsoft.Authorization/roleAssignments@2
     roleDefinitionId: costManagementReaderRole.id
     principalId: functionApp.outputs.functionAppPrincipalId
     principalType: 'ServicePrincipal'
+  }
+}
+
+// Deploy storage account managed identity role assignments
+module storageManagedIdentity 'modules/storage-managed-identity.bicep' = {
+  scope: rg
+  name: 'deploy-storage-managed-identity'
+  params: {
+    storageAccountId: storage.outputs.storageAccountId
+    functionAppPrincipalId: functionApp.outputs.functionAppPrincipalId
   }
 }
 
@@ -181,7 +207,7 @@ module eventHubFunctionApp 'modules/eventhub-function-app.bicep' = {
     eventHubConnectionString: eventHub.outputs.functionConnectionString
     eventHubName: eventHub.outputs.eventHubName
     environment: environment
-    subnetId: enablePrivateNetworking ? networking!.outputs.functionSubnetId : ''
+    subnetId: networking.outputs.functionSubnetId
     enablePrivateNetworking: enablePrivateNetworking
   }
 }
@@ -209,7 +235,7 @@ module keyVault 'modules/key-vault.bicep' = {
     tags: tags
     functionAppPrincipalId: functionApp.outputs.functionAppPrincipalId
     enablePrivateEndpoint: enablePrivateNetworking
-    subnetId: enablePrivateNetworking ? networking!.outputs.privateEndpointSubnetId : ''
+    subnetId: networking.outputs.privateEndpointSubnetId
   }
 }
 

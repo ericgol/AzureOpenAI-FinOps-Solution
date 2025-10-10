@@ -141,8 +141,13 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2023-09-01' = {
             {
               service: 'Microsoft.KeyVault'
             }
+            {
+              service: 'Microsoft.Web'
+            }
           ]
           delegations: []
+          privateEndpointNetworkPolicies: 'Disabled'
+          privateLinkServiceNetworkPolicies: 'Enabled'
         }
       }
       {
@@ -168,6 +173,8 @@ resource virtualNetwork 'Microsoft.Network/virtualNetworks@2023-09-01' = {
               }
             }
           ]
+          privateEndpointNetworkPolicies: 'Disabled'
+          privateLinkServiceNetworkPolicies: 'Enabled'
         }
       }
       {

@@ -29,6 +29,13 @@ param subnetId string = ''
 @description('Python version')
 param pythonVersion string = '3.11'
 
+@description('Enable VNet integration')
+param enableVnetIntegration bool = false
+
+
+@description('Enable managed identity for storage')
+param useManagedIdentity bool = false
+
 // App Service Plan
 resource appServicePlan 'Microsoft.Web/serverfarms@2023-01-01' = {
   name: '${functionAppName}-plan'
@@ -65,19 +72,8 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
       http20Enabled: true
       functionAppScaleLimit: environment == 'prod' ? 20 : 10
       minimumElasticInstanceCount: environment == 'prod' ? 1 : 0
-      appSettings: [
-        {
-          name: 'AzureWebJobsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};EndpointSuffix=${az.environment().suffixes.storage};AccountKey=${listKeys(resourceId('Microsoft.Storage/storageAccounts', storageAccountName), '2023-01-01').keys[0].value}'
-        }
-        {
-          name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};EndpointSuffix=${az.environment().suffixes.storage};AccountKey=${listKeys(resourceId('Microsoft.Storage/storageAccounts', storageAccountName), '2023-01-01').keys[0].value}'
-        }
-        {
-          name: 'WEBSITE_CONTENTSHARE'
-          value: toLower(functionAppName)
-        }
+      appSettings: union([
+        // Core Function App settings
         {
           name: 'FUNCTIONS_EXTENSION_VERSION'
           value: '~4'
@@ -85,6 +81,10 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
         {
           name: 'FUNCTIONS_WORKER_RUNTIME'
           value: 'python'
+        }
+        {
+          name: 'WEBSITE_CONTENTSHARE'
+          value: toLower(functionAppName)
         }
         {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
@@ -130,11 +130,41 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
           name: 'XDG_CACHE_HOME'
           value: '/tmp/.cache'
         }
-      ]
+      ], useManagedIdentity ? [
+        // Managed identity storage settings
+        {
+          name: 'AzureWebJobsStorage__accountName'
+          value: storageAccountName
+        }
+        {
+          name: 'AzureWebJobsStorage__credential'
+          value: 'managedidentity'
+        }
+        {
+          name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING__accountName'
+          value: storageAccountName
+        }
+        {
+          name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING__credential'
+          value: 'managedidentity'
+        }
+      ] : [
+        // Legacy connection string settings (fallback)
+        {
+          name: 'AzureWebJobsStorage'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};EndpointSuffix=${az.environment().suffixes.storage};AccountKey=${listKeys(resourceId('Microsoft.Storage/storageAccounts', storageAccountName), '2023-01-01').keys[0].value}'
+        }
+        {
+          name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};EndpointSuffix=${az.environment().suffixes.storage};AccountKey=${listKeys(resourceId('Microsoft.Storage/storageAccounts', storageAccountName), '2023-01-01').keys[0].value}'
+        }
+      ])
+      vnetRouteAllEnabled: enableVnetIntegration // Route all traffic through VNet
     }
     httpsOnly: true
-    publicNetworkAccess: subnetId != '' ? 'Disabled' : 'Enabled'
-    virtualNetworkSubnetId: subnetId != '' ? subnetId : null
+    publicNetworkAccess: enableVnetIntegration ? 'Disabled' : 'Enabled'
+    virtualNetworkSubnetId: enableVnetIntegration ? subnetId : null
+    vnetContentShareEnabled: useManagedIdentity // Use VNet for file share when using managed identity
   }
 }
 

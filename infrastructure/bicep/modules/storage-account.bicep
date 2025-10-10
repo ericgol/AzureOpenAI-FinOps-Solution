@@ -14,6 +14,15 @@ param environment string
 @description('Enable private endpoint')
 param enablePrivateEndpoint bool = false
 
+@description('Function subnet ID for VNet rule')
+param functionSubnetId string = ''
+
+@description('APIM subnet ID for VNet rule')
+param apimSubnetId string = ''
+
+@description('Private endpoint subnet ID')
+param privateEndpointSubnetId string = ''
+
 // Storage Account
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   name: storageAccountName
@@ -26,12 +35,25 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   properties: {
     accessTier: 'Hot'
     allowBlobPublicAccess: false
-    allowSharedKeyAccess: true
+    allowSharedKeyAccess: true // Keep enabled for Function App compatibility during transition
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
+    publicNetworkAccess: enablePrivateEndpoint ? 'Disabled' : 'Enabled'
     networkAcls: enablePrivateEndpoint ? {
       defaultAction: 'Deny'
       bypass: 'AzureServices'
+      virtualNetworkRules: [
+        {
+          id: functionSubnetId
+          action: 'Allow'
+          state: 'Succeeded'
+        }
+        {
+          id: apimSubnetId
+          action: 'Allow'
+          state: 'Succeeded'
+        }
+      ]
     } : {
       defaultAction: 'Allow'
     }
@@ -106,6 +128,71 @@ resource userMappingsTable 'Microsoft.Storage/storageAccounts/tableServices/tabl
   name: '${storageAccount.name}/default/usermappings'
   properties: {}
 }
+
+// Private endpoint for blob storage
+resource blobPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-09-01' = if (enablePrivateEndpoint) {
+  name: '${storageAccount.name}-blob-pe'
+  location: location
+  tags: tags
+  properties: {
+    subnet: {
+      id: privateEndpointSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: '${storageAccount.name}-blob-connection'
+        properties: {
+          privateLinkServiceId: storageAccount.id
+          groupIds: ['blob']
+        }
+      }
+    ]
+  }
+}
+
+// Private endpoint for file storage
+resource filePrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-09-01' = if (enablePrivateEndpoint) {
+  name: '${storageAccount.name}-file-pe'
+  location: location
+  tags: tags
+  properties: {
+    subnet: {
+      id: privateEndpointSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: '${storageAccount.name}-file-connection'
+        properties: {
+          privateLinkServiceId: storageAccount.id
+          groupIds: ['file']
+        }
+      }
+    ]
+  }
+}
+
+// Private endpoint for table storage
+resource tablePrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-09-01' = if (enablePrivateEndpoint) {
+  name: '${storageAccount.name}-table-pe'
+  location: location
+  tags: tags
+  properties: {
+    subnet: {
+      id: privateEndpointSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: '${storageAccount.name}-table-connection'
+        properties: {
+          privateLinkServiceId: storageAccount.id
+          groupIds: ['table']
+        }
+      }
+    ]
+  }
+}
+
+// Role assignments are handled separately in main template after Function App is created
 
 // Outputs
 output storageAccountName string = storageAccount.name
