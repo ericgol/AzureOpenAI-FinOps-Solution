@@ -72,6 +72,7 @@ resource eventHub 'Microsoft.EventHub/namespaces/eventhubs@2023-01-01-preview' =
 }
 
 // Consumer Group for Function App
+// Note: Consumer Groups require Standard tier or above (not supported in Basic tier)
 resource consumerGroup 'Microsoft.EventHub/namespaces/eventhubs/consumergroups@2023-01-01-preview' = {
   parent: eventHub
   name: 'finops-function-app'

@@ -181,6 +181,7 @@ module functionAppRoleAssignments 'modules/role-assignments.bicep' = {
 }
 
 // Deploy EventHub for APIM telemetry
+// Note: Using Standard tier for all environments because Consumer Groups are required for Function Apps
 module eventHub 'modules/event-hub.bicep' = {
   scope: rg
   name: 'deploy-event-hub'
@@ -189,7 +190,7 @@ module eventHub 'modules/event-hub.bicep' = {
     eventHubName: 'finops-telemetry'
     location: location
     tags: tags
-    eventHubSku: environment == 'prod' ? 'Standard' : 'Basic'
+    eventHubSku: 'Standard' // Consumer Groups require Standard tier or above
     eventHubCapacity: environment == 'prod' ? 2 : 1
     environment: environment
   }
