@@ -32,12 +32,12 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
     allowSharedKeyAccess: true // Keep enabled for Function App compatibility during transition
     minimumTlsVersion: 'TLS1_2'
     supportsHttpsTrafficOnly: true
-    // Initially enable public access to allow Function App file share creation
-    // Will be restricted later via separate update operation
-    publicNetworkAccess: 'Enabled' 
+    // Keep public access enabled during initial deployment
+    // This will be restricted later by the storage-network-restriction module
+    publicNetworkAccess: 'Enabled'
     networkAcls: {
       defaultAction: 'Allow'
-      bypass: 'AzureServices'
+      bypass: 'AzureServices,Logging,Metrics'
     }
     encryption: {
       services: {

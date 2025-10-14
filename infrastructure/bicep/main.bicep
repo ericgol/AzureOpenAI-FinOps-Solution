@@ -242,9 +242,9 @@ module keyVault 'modules/key-vault.bicep' = {
   }
 }
 
-// Apply storage network restrictions after Function App and private networking are ready
+// Apply storage network restrictions after ALL Function Apps are deployed and ready
 // This prevents the Function App file share creation failure by allowing initial public access
-module storageNetworkRestriction 'modules/storage-network-restriction.bicep' = {
+module storageNetworkRestriction 'modules/storage-network-restriction.bicep' = if (enablePrivateNetworking) {
   scope: rg
   name: 'deploy-storage-network-restriction'
   params: {
@@ -260,6 +260,8 @@ module storageNetworkRestriction 'modules/storage-network-restriction.bicep' = {
     eventHubFunctionApp
     privateDnsZones
     storageManagedIdentity
+    functionAppRoleAssignments
+    keyVault
   ]
 }
 

@@ -149,7 +149,7 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
           value: 'managedidentity'
         }
       ] : [
-        // Legacy connection string settings (fallback)
+        // Storage connection string settings for file share access
         {
           name: 'AzureWebJobsStorage'
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};EndpointSuffix=${az.environment().suffixes.storage};AccountKey=${listKeys(resourceId('Microsoft.Storage/storageAccounts', storageAccountName), '2023-01-01').keys[0].value}'
@@ -162,9 +162,12 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
       vnetRouteAllEnabled: enableVnetIntegration // Route all traffic through VNet
     }
     httpsOnly: true
-    publicNetworkAccess: enableVnetIntegration ? 'Disabled' : 'Enabled'
+    // Keep public access enabled initially to allow file share creation
+    // Will be disabled later by network restriction module if private networking is enabled
+    publicNetworkAccess: 'Enabled'
     virtualNetworkSubnetId: enableVnetIntegration ? subnetId : null
-    vnetContentShareEnabled: useManagedIdentity // Use VNet for file share when using managed identity
+    // Disable VNet content share initially to prevent file share creation issues
+    vnetContentShareEnabled: false
   }
 }
 

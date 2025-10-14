@@ -122,7 +122,9 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
       pythonVersion: '3.11'
     }
     httpsOnly: true
-    publicNetworkAccess: enablePrivateNetworking ? 'Disabled' : 'Enabled'
+    // Keep public access enabled initially to allow file share creation
+    // Will be disabled later by network restriction module if private networking is enabled
+    publicNetworkAccess: 'Enabled'
   }
 }
 
