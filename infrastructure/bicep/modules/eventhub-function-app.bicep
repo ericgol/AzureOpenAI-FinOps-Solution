@@ -25,11 +25,6 @@ param eventHubName string = 'finops-telemetry'
 @description('Environment (dev, staging, prod)')
 param environment string
 
-@description('Virtual network subnet ID for function app (optional)')
-param subnetId string = ''
-
-@description('Enable private networking')
-param enablePrivateNetworking bool = false
 
 // App Service Plan for Function App
 resource appServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {

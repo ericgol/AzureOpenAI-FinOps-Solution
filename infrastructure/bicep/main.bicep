@@ -34,7 +34,7 @@ param tags object = {
 param apimSku string = 'Developer'
 
 @description('Enable private networking (required for enterprise compliance)')
-param enablePrivateNetworking bool = true
+param enablePrivateNetworking bool = false
 
 @description('Cost Management scope (subscription or resource group)')
 param costManagementScope string = subscription().id
@@ -121,7 +121,6 @@ module apim 'modules/api-management.bicep' = {
     appInsightsResourceId: appInsights.outputs.appInsightsId
     subnetId: networking.outputs.apimSubnetId
     enablePrivateNetworking: enablePrivateNetworking
-    environment: environment
   }
   // Dependencies are automatically inferred from parameter references
 }
@@ -139,9 +138,7 @@ module functionApp 'modules/function-app.bicep' = {
     logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
     costManagementScope: costManagementScope
     environment: environment
-    subnetId: networking.outputs.functionSubnetId
-    enableVnetIntegration: enablePrivateNetworking
-    useManagedIdentity: enablePrivateNetworking
+    useManagedIdentity: false // Always use connection strings for dev to avoid file share issues
   }
   // Dependencies are automatically inferred from parameter references
 }
@@ -210,8 +207,6 @@ module eventHubFunctionApp 'modules/eventhub-function-app.bicep' = {
     eventHubConnectionString: eventHub.outputs.functionConnectionString
     eventHubName: eventHub.outputs.eventHubName
     environment: environment
-    subnetId: networking.outputs.functionSubnetId
-    enablePrivateNetworking: enablePrivateNetworking
   }
 }
 

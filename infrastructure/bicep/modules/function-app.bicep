@@ -23,14 +23,8 @@ param costManagementScope string
 @description('Environment name')
 param environment string
 
-@description('Subnet ID for private networking')
-param subnetId string = ''
-
 @description('Python version')
 param pythonVersion string = '3.11'
-
-@description('Enable VNet integration')
-param enableVnetIntegration bool = false
 
 
 @description('Enable managed identity for storage')
