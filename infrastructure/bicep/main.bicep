@@ -18,6 +18,11 @@ param uniqueSuffix string = uniqueString(subscription().subscriptionId, projectN
 var cleanProjectName = replace(replace(projectName, '-', ''), '_', '')
 var storageAccountName = take('${cleanProjectName}${environment}sa${take(uniqueSuffix, 10)}', 24)
 
+// Key Vault name must be 3-24 chars, alphanumeric and hyphens (no consecutive hyphens)
+// Create a shortened version for Key Vault: take first 4 chars of project + env + kv + short hash
+var shortProjectName = take(replace(replace(projectName, '-', ''), '_', ''), 4)
+var keyVaultName = take('${shortProjectName}${environment}kv${take(uniqueSuffix, 8)}', 24)
+
 @description('Resource group name')
 param resourceGroupName string = '${projectName}-${environment}-rg'
 
@@ -228,7 +233,7 @@ module keyVault 'modules/key-vault.bicep' = {
   scope: rg
   name: 'deploy-key-vault'
   params: {
-    keyVaultName: '${projectName}-${environment}-kv-${uniqueSuffix}'
+    keyVaultName: keyVaultName
     location: location
     tags: tags
     functionAppPrincipalId: functionApp.outputs.functionAppPrincipalId

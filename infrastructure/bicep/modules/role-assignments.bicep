@@ -7,7 +7,7 @@ param functionAppName string
 
 // Log Analytics Reader role for querying workspace  
 resource logAnalyticsReaderRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
-  name: '73c42c96-874c-492b-b04d-ab87fe914b4a' // Log Analytics Reader
+  name: '73c42c96-874c-492b-b04d-ab87d138a893' // Log Analytics Reader
 }
 
 resource logAnalyticsRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
