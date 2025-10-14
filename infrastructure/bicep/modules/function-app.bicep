@@ -159,20 +159,19 @@ resource functionApp 'Microsoft.Web/sites@2023-01-01' = {
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};EndpointSuffix=${az.environment().suffixes.storage};AccountKey=${listKeys(resourceId('Microsoft.Storage/storageAccounts', storageAccountName), '2023-01-01').keys[0].value}'
         }
       ])
-      vnetRouteAllEnabled: enableVnetIntegration // Route all traffic through VNet
+      vnetRouteAllEnabled: false // Disable VNet routing to avoid file share issues
     }
     httpsOnly: true
-    // Keep public access enabled initially to allow file share creation
-    // Will be disabled later by network restriction module if private networking is enabled
+    // Always keep public access enabled for development to avoid file share creation issues
     publicNetworkAccess: 'Enabled'
-    virtualNetworkSubnetId: enableVnetIntegration ? subnetId : null
-    // Disable VNet content share initially to prevent file share creation issues
+    // Do not set virtualNetworkSubnetId to avoid any VNet integration during deployment
+    // This prevents file share creation failures
     vnetContentShareEnabled: false
   }
 }
 
 // Diagnostic settings for Function App
-// Note: Diagnostic settings depend on Log Analytics workspace being active
+// Note: Retention policies are no longer supported in newer API versions
 resource functionAppDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   scope: functionApp
   name: 'finops-function-diagnostics'
@@ -182,20 +181,12 @@ resource functionAppDiagnostics 'Microsoft.Insights/diagnosticSettings@2021-05-0
       {
         categoryGroup: 'allLogs'
         enabled: true
-        retentionPolicy: {
-          enabled: true
-          days: environment == 'prod' ? 730 : 90
-        }
       }
     ]
     metrics: [
       {
         category: 'AllMetrics'
         enabled: true
-        retentionPolicy: {
-          enabled: true
-          days: environment == 'prod' ? 730 : 90
-        }
       }
     ]
   }

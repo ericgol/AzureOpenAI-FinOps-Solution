@@ -74,7 +74,8 @@ resource appInsightsLogger 'Microsoft.ApiManagement/service/loggers@2023-05-01-p
 }
 
 // Diagnostic settings for APIM
-// Note: Diagnostic settings depend on Log Analytics workspace being active
+// Note: Retention policies are no longer supported in newer API versions
+// Log Analytics workspace handles retention based on its own settings
 resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
   scope: apiManagement
   name: 'finops-diagnostics'
@@ -84,20 +85,12 @@ resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-pr
       {
         categoryGroup: 'allLogs'
         enabled: true
-        retentionPolicy: {
-          enabled: true
-          days: environment == 'prod' ? 730 : 90
-        }
       }
     ]
     metrics: [
       {
         category: 'AllMetrics'
         enabled: true
-        retentionPolicy: {
-          enabled: true
-          days: environment == 'prod' ? 730 : 90
-        }
       }
     ]
   }

@@ -128,15 +128,8 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
   }
 }
 
-// Configure VNET integration if private networking is enabled
-resource vnetIntegration 'Microsoft.Web/sites/networkConfig@2022-09-01' = if (enablePrivateNetworking && !empty(subnetId)) {
-  parent: functionApp
-  name: 'virtualNetwork'
-  properties: {
-    subnetResourceId: subnetId
-    swiftSupported: true
-  }
-}
+// VNet integration disabled for development to avoid file share creation issues
+// Can be enabled post-deployment if needed for production scenarios
 
 // Get reference to existing storage account
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' existing = {
