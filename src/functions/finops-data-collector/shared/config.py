@@ -6,7 +6,7 @@ Handles environment variables, settings, and configuration validation.
 
 import os
 from typing import Optional, Dict, Any
-from pydantic_settings import BaseSettings
+from pydantic import BaseSettings
 from pydantic import Field, validator
 import logging
 
