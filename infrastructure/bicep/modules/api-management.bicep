@@ -174,13 +174,13 @@ resource chatCompletionsOperation 'Microsoft.ApiManagement/service/apis/operatio
           required: true
         }
         {
-          name: 'x-device-id'
+          name: 'device-id'
           type: 'string'
           required: false
           description: 'Custom user identifier for cost allocation'
         }
         {
-          name: 'x-store-number'
+          name: 'store-number'
           type: 'string'
           required: false
           description: 'Store identifier for cost allocation'
@@ -211,8 +211,8 @@ resource finOpsTelemetryPolicy 'Microsoft.ApiManagement/service/apis/policies@20
 <policies>
   <inbound>
     <base />
-    <set-variable name="deviceId" value="@(context.Request.Headers.GetValueOrDefault("x-device-id", "unknown"))" />
-    <set-variable name="storeNumber" value="@(context.Request.Headers.GetValueOrDefault("x-store-number", "unknown"))" />
+    <set-variable name="deviceId" value="@(context.Request.Headers.GetValueOrDefault("device-id", "unknown"))" />
+    <set-variable name="storeNumber" value="@(context.Request.Headers.GetValueOrDefault("store-number", "unknown"))" />
     <set-variable name="requestTimestamp" value="@(DateTime.UtcNow)" />
     <set-variable name="requestId" value="@(Guid.NewGuid())" />
   </inbound>
