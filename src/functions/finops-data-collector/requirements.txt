@@ -26,7 +26,8 @@ httpx>=0.27.0,<1.0.0
 # Data processing
 pandas>=2.3.3,<3.0.0
 numpy>=1.26.0,<3.0.0  # Using 1.26.0 for better pandas compatibility
-pyarrow>=17.0.0,<18.0.0
+# PyArrow - using older stable version that has pre-built wheels for macOS
+pyarrow>=14.0.0,<15.0.0
 
 # Configuration and utilities
 python-dotenv>=1.0.1,<2.0.0

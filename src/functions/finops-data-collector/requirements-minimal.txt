@@ -1,0 +1,22 @@
+# Minimal requirements for local development (no grpc/opentelemetry dependencies)
+# Core Azure Functions and SDK components
+azure-functions>=1.18,<2
+azure-identity>=1.17,<2
+azure-mgmt-costmanagement>=4.0,<5
+azure-mgmt-monitor>=6.0,<7
+
+# Data processing (stable versions with pre-built wheels)
+pandas>=2.1,<2.3
+numpy>=1.24,<1.27
+requests>=2.32,<3
+
+# Configuration and validation
+pydantic>=2.5,<3
+python-dotenv>=1.0,<2
+
+# Testing and development
+pytest>=7.4,<8
+pytest-asyncio>=0.21,<1
+
+# Date/time handling
+python-dateutil>=2.8,<3
