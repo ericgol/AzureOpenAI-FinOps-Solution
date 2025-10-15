@@ -156,7 +156,7 @@ resource chatCompletionsOperation 'Microsoft.ApiManagement/service/apis/operatio
         description: 'Deployment ID of the model'
       }
     ]
-    description: 'Creates a model response for the given chat conversation. Custom headers (device-id, store-number) are handled by the FinOps policy.'
+    description: 'Creates a model response for the given chat conversation. Custom headers (device_id, store_number) are handled by the FinOps policy.'
     request: {
       queryParameters: [
         {
@@ -199,8 +199,8 @@ resource finOpsTelemetryPolicy 'Microsoft.ApiManagement/service/apis/policies@20
 <policies>
   <inbound>
     <base />
-    <set-variable name="deviceId" value="@(context.Request.Headers.GetValueOrDefault("device-id", "unknown"))" />
-    <set-variable name="storeNumber" value="@(context.Request.Headers.GetValueOrDefault("store-number", "unknown"))" />
+    <set-variable name="deviceId" value="@(context.Request.Headers.GetValueOrDefault("device_id", "unknown"))" />
+    <set-variable name="storeNumber" value="@(context.Request.Headers.GetValueOrDefault("store_number", "unknown"))" />
     <set-variable name="requestTimestamp" value="@(DateTime.UtcNow)" />
     <set-variable name="requestId" value="@(Guid.NewGuid())" />
   </inbound>
