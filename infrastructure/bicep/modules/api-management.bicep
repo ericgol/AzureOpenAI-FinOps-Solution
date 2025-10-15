@@ -200,15 +200,57 @@ resource finOpsTelemetryPolicy 'Microsoft.ApiManagement/service/apis/policies@20
     <base />
     <set-variable name="deviceId" value="@(context.Request.Headers.GetValueOrDefault(&quot;device_id&quot;, &quot;unknown&quot;))" />
     <set-variable name="storeNumber" value="@(context.Request.Headers.GetValueOrDefault(&quot;store_number&quot;, &quot;unknown&quot;))" />
+    <set-variable name="requestTimestamp" value="@(DateTime.UtcNow)" />
+    <set-variable name="correlationId" value="@(Guid.NewGuid())" />
   </inbound>
   <backend>
     <base />
   </backend>
   <outbound>
     <base />
+    <set-variable name="responseTime" value="@((int)(DateTime.UtcNow - (DateTime)context.Variables[&quot;requestTimestamp&quot;]).TotalMilliseconds)" />
+    <set-variable name="tokensUsed" value="@(context.Response.StatusCode == 200 ? (context.Response.Body?.As&lt;JObject&gt;(preserveContent: true)?[&quot;usage&quot;]?[&quot;total_tokens&quot;]?.Value&lt;int&gt;() ?? 0) : 0)" />
+    <set-variable name="promptTokens" value="@(context.Response.StatusCode == 200 ? (context.Response.Body?.As&lt;JObject&gt;(preserveContent: true)?[&quot;usage&quot;]?[&quot;prompt_tokens&quot;]?.Value&lt;int&gt;() ?? 0) : 0)" />
+    <set-variable name="completionTokens" value="@(context.Response.StatusCode == 200 ? (context.Response.Body?.As&lt;JObject&gt;(preserveContent: true)?[&quot;usage&quot;]?[&quot;completion_tokens&quot;]?.Value&lt;int&gt;() ?? 0) : 0)" />
+    <set-variable name="modelName" value="@(context.Response.StatusCode == 200 ? (context.Response.Body?.As&lt;JObject&gt;(preserveContent: true)?[&quot;model&quot;]?.Value&lt;string&gt;() ?? &quot;&quot;) : &quot;&quot;)" />
+    <set-variable name="apiVersion" value="@(context.Request.Url.Query.GetValueOrDefault(&quot;api-version&quot;, &quot;&quot;))" />
+    <set-variable name="deploymentId" value="@(context.Request.MatchedParameters.GetValueOrDefault(&quot;deployment-id&quot;, &quot;&quot;))" />
+    <trace source="finops-telemetry">
+      @{
+        return string.Format(&quot;FinOps|{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}|{8}|{9}|{10}|{11}|{12}|{13}|{14}&quot;,
+          context.Variables[&quot;correlationId&quot;],
+          context.Variables[&quot;deviceId&quot;],
+          context.Variables[&quot;storeNumber&quot;], 
+          context.Api.Name,
+          context.Operation.Name,
+          context.Request.Method,
+          context.Response.StatusCode,
+          context.Variables[&quot;responseTime&quot;],
+          context.Variables[&quot;tokensUsed&quot;],
+          context.Variables[&quot;promptTokens&quot;],
+          context.Variables[&quot;completionTokens&quot;],
+          context.Variables[&quot;modelName&quot;],
+          context.Variables[&quot;apiVersion&quot;],
+          context.Variables[&quot;deploymentId&quot;],
+          DateTime.UtcNow.ToString(&quot;o&quot;)
+        );
+      }
+    </trace>
   </outbound>
   <on-error>
     <base />
+    <trace source="finops-error">
+      @{
+        return string.Format(&quot;FinOpsError|{0}|{1}|{2}|{3}|{4}|{5}&quot;,
+          context.Variables[&quot;correlationId&quot;] ?? &quot;unknown&quot;,
+          context.Variables[&quot;deviceId&quot;] ?? &quot;unknown&quot;,
+          context.Variables[&quot;storeNumber&quot;] ?? &quot;unknown&quot;,
+          context.Response?.StatusCode ?? 500,
+          context.LastError?.Message ?? &quot;Unknown error&quot;,
+          DateTime.UtcNow.ToString(&quot;o&quot;)
+        );
+      }
+    </trace>
   </on-error>
 </policies>'''
   }
