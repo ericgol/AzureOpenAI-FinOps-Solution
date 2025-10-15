@@ -195,91 +195,22 @@ resource finOpsTelemetryPolicy 'Microsoft.ApiManagement/service/apis/policies@20
   parent: openAiApi
   name: 'policy'
   properties: {
-    value: '''
-<policies>
+    value: '''<policies>
   <inbound>
     <base />
-    <set-variable name="deviceId" value="@(context.Request.Headers.GetValueOrDefault("device_id", "unknown"))" />
-    <set-variable name="storeNumber" value="@(context.Request.Headers.GetValueOrDefault("store_number", "unknown"))" />
-    <set-variable name="requestTimestamp" value="@(DateTime.UtcNow)" />
-    <set-variable name="requestId" value="@(Guid.NewGuid())" />
+    <set-variable name="deviceId" value="@(context.Request.Headers.GetValueOrDefault(&quot;device_id&quot;, &quot;unknown&quot;))" />
+    <set-variable name="storeNumber" value="@(context.Request.Headers.GetValueOrDefault(&quot;store_number&quot;, &quot;unknown&quot;))" />
   </inbound>
   <backend>
     <base />
   </backend>
   <outbound>
     <base />
-    <log-to-eventhub logger-id="applicationinsights">
-      @{
-        var deviceId = (string)context.Variables["deviceId"];
-        var storeNumber = (string)context.Variables["storeNumber"];
-        var requestTimestamp = (DateTime)context.Variables["requestTimestamp"];
-        var requestId = (string)context.Variables["requestId"];
-        var responseTime = (int)(DateTime.UtcNow - requestTimestamp).TotalMilliseconds;
-        
-        // Extract token usage from response if available
-        var tokensUsed = 0;
-        if (context.Response.StatusCode == 200) {
-          try {
-            var responseBody = context.Response.Body?.As<JObject>();
-            if (responseBody != null && responseBody["usage"] != null) {
-              tokensUsed = (int)responseBody["usage"]["total_tokens"];
-            }
-          }
-          catch { }
-        }
-        
-        return new JObject(
-          new JProperty("timestamp", requestTimestamp),
-          new JProperty("requestId", requestId),
-          new JProperty("deviceId", deviceId),
-          new JProperty("storeNumber", storeNumber),
-          new JProperty("apiName", context.Api.Name),
-          new JProperty("operationName", context.Operation.Name),
-          new JProperty("method", context.Request.Method),
-          new JProperty("url", context.Request.Url.ToString()),
-          new JProperty("statusCode", context.Response.StatusCode),
-          new JProperty("responseTime", responseTime),
-          new JProperty("tokensUsed", tokensUsed),
-          new JProperty("subscriptionId", context.Subscription?.Id ?? ""),
-          new JProperty("productId", context.Product?.Id ?? ""),
-          new JProperty("resourceId", "{{log-analytics-workspace-id}}")
-        ).ToString();
-      }
-    </log-to-eventhub>
   </outbound>
   <on-error>
     <base />
-    <log-to-eventhub logger-id="applicationinsights">
-      @{
-        var deviceId = (string)context.Variables["deviceId"];
-        var storeNumber = (string)context.Variables["storeNumber"];
-        var requestTimestamp = (DateTime)context.Variables["requestTimestamp"];
-        var requestId = (string)context.Variables["requestId"];
-        var responseTime = (int)(DateTime.UtcNow - requestTimestamp).TotalMilliseconds;
-        
-        return new JObject(
-          new JProperty("timestamp", requestTimestamp),
-          new JProperty("requestId", requestId),
-          new JProperty("deviceId", deviceId),
-          new JProperty("storeNumber", storeNumber),
-          new JProperty("apiName", context.Api.Name),
-          new JProperty("operationName", context.Operation.Name),
-          new JProperty("method", context.Request.Method),
-          new JProperty("url", context.Request.Url.ToString()),
-          new JProperty("statusCode", context.Response?.StatusCode ?? 500),
-          new JProperty("responseTime", responseTime),
-          new JProperty("tokensUsed", 0),
-          new JProperty("error", context.LastError?.Message ?? "Unknown error"),
-          new JProperty("subscriptionId", context.Subscription?.Id ?? ""),
-          new JProperty("productId", context.Product?.Id ?? ""),
-          new JProperty("resourceId", "{{log-analytics-workspace-id}}")
-        ).ToString();
-      }
-    </log-to-eventhub>
   </on-error>
-</policies>
-'''
+</policies>'''
   }
 }
 
