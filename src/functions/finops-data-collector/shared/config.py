@@ -6,84 +6,87 @@ Handles environment variables, settings, and configuration validation.
 
 import os
 from typing import Optional, Dict, Any
-from pydantic import BaseSettings
-from pydantic import Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 import logging
 
 
-class FinOpsConfig(BaseSettings):
+class FinOpsConfig(BaseModel):
     """
     Configuration class for FinOps solution.
     
     Uses environment variables with fallback defaults.
     """
+    model_config = ConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        env_prefix="",
+        extra="ignore"
+    )
     
     # Azure Authentication
-    azure_client_id: Optional[str] = Field(default=None, env="AZURE_CLIENT_ID")
-    azure_tenant_id: Optional[str] = Field(default=None, env="AZURE_TENANT_ID")
+    azure_client_id: Optional[str] = Field(default=None, validation_alias="AZURE_CLIENT_ID")
+    azure_tenant_id: Optional[str] = Field(default=None, validation_alias="AZURE_TENANT_ID")
     
     # Log Analytics
-    log_analytics_workspace_id: str = Field(..., env="LOG_ANALYTICS_WORKSPACE_ID")
-    log_analytics_workspace_key: Optional[str] = Field(default=None, env="LOG_ANALYTICS_WORKSPACE_KEY")
+    log_analytics_workspace_id: str = Field(validation_alias="LOG_ANALYTICS_WORKSPACE_ID")
+    log_analytics_workspace_key: Optional[str] = Field(default=None, validation_alias="LOG_ANALYTICS_WORKSPACE_KEY")
     
     # Cost Management
-    cost_management_scope: str = Field(..., env="COST_MANAGEMENT_SCOPE")
+    cost_management_scope: str = Field(validation_alias="COST_MANAGEMENT_SCOPE")
     
     # Storage Account
-    storage_account_name: str = Field(..., env="STORAGE_ACCOUNT_NAME")
-    storage_account_key: Optional[str] = Field(default=None, env="STORAGE_ACCOUNT_KEY")
+    storage_account_name: str = Field(validation_alias="STORAGE_ACCOUNT_NAME")
+    storage_account_key: Optional[str] = Field(default=None, validation_alias="STORAGE_ACCOUNT_KEY")
     
     # Container names
-    finops_data_container: str = Field(default="finops-data", env="FINOPS_DATA_CONTAINER")
-    raw_telemetry_container: str = Field(default="raw-telemetry", env="RAW_TELEMETRY_CONTAINER")
-    cost_data_container: str = Field(default="cost-data", env="COST_DATA_CONTAINER")
+    finops_data_container: str = Field(default="finops-data", validation_alias="FINOPS_DATA_CONTAINER")
+    raw_telemetry_container: str = Field(default="raw-telemetry", validation_alias="RAW_TELEMETRY_CONTAINER")
+    cost_data_container: str = Field(default="cost-data", validation_alias="COST_DATA_CONTAINER")
     
     # Data collection settings
-    data_collection_interval_minutes: int = Field(default=6, env="DATA_COLLECTION_INTERVAL_MINUTES")
-    lookback_hours: int = Field(default=1, env="LOOKBACK_HOURS")
-    max_retry_attempts: int = Field(default=3, env="MAX_RETRY_ATTEMPTS")
+    data_collection_interval_minutes: int = Field(default=6, validation_alias="DATA_COLLECTION_INTERVAL_MINUTES")
+    lookback_hours: int = Field(default=1, validation_alias="LOOKBACK_HOURS")
+    max_retry_attempts: int = Field(default=3, validation_alias="MAX_RETRY_ATTEMPTS")
     
     # Environment
-    environment: str = Field(default="dev", env="ENVIRONMENT")
+    environment: str = Field(default="dev", validation_alias="ENVIRONMENT")
     
     # Application Insights
-    appinsights_connection_string: Optional[str] = Field(default=None, env="APPLICATIONINSIGHTS_CONNECTION_STRING")
+    appinsights_connection_string: Optional[str] = Field(default=None, validation_alias="APPLICATIONINSIGHTS_CONNECTION_STRING")
     
     # Key Vault (optional)
-    key_vault_url: Optional[str] = Field(default=None, env="KEY_VAULT_URL")
+    key_vault_url: Optional[str] = Field(default=None, validation_alias="KEY_VAULT_URL")
     
     # APIM settings
-    apim_name: Optional[str] = Field(default=None, env="APIM_NAME")
-    apim_resource_group: Optional[str] = Field(default=None, env="APIM_RESOURCE_GROUP")
+    apim_name: Optional[str] = Field(default=None, validation_alias="APIM_NAME")
+    apim_resource_group: Optional[str] = Field(default=None, validation_alias="APIM_RESOURCE_GROUP")
     
     # Cost allocation settings
-    default_allocation_method: str = Field(default="proportional", env="DEFAULT_ALLOCATION_METHOD")
-    enable_user_mapping: bool = Field(default=True, env="ENABLE_USER_MAPPING")
-    enable_store_mapping: bool = Field(default=True, env="ENABLE_STORE_MAPPING")
+    default_allocation_method: str = Field(default="proportional", validation_alias="DEFAULT_ALLOCATION_METHOD")
+    enable_user_mapping: bool = Field(default=True, validation_alias="ENABLE_USER_MAPPING")
+    enable_store_mapping: bool = Field(default=True, validation_alias="ENABLE_STORE_MAPPING")
     
     # Performance settings
-    batch_size: int = Field(default=1000, env="BATCH_SIZE")
-    max_concurrent_requests: int = Field(default=10, env="MAX_CONCURRENT_REQUESTS")
+    batch_size: int = Field(default=1000, validation_alias="BATCH_SIZE")
+    max_concurrent_requests: int = Field(default=10, validation_alias="MAX_CONCURRENT_REQUESTS")
     
     # Logging
-    log_level: str = Field(default="INFO", env="LOG_LEVEL")
-    enable_debug_logging: bool = Field(default=False, env="ENABLE_DEBUG_LOGGING")
+    log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
+    enable_debug_logging: bool = Field(default=False, validation_alias="ENABLE_DEBUG_LOGGING")
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-    
-    @validator("log_level")
-    def validate_log_level(cls, v):
+    @field_validator("log_level")
+    @classmethod
+    def validate_log_level(cls, v: str) -> str:
         """Validate log level."""
         valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if v.upper() not in valid_levels:
             raise ValueError(f"Invalid log level: {v}. Must be one of {valid_levels}")
         return v.upper()
     
-    @validator("default_allocation_method")
-    def validate_allocation_method(cls, v):
+    @field_validator("default_allocation_method")
+    @classmethod
+    def validate_allocation_method(cls, v: str) -> str:
         """Validate cost allocation method."""
         valid_methods = ["proportional", "equal", "usage-based", "token-based"]
         if v.lower() not in valid_methods:
@@ -238,7 +241,13 @@ def get_config() -> FinOpsConfig:
     global _config_instance
     
     if _config_instance is None:
-        _config_instance = FinOpsConfig()
+        # Read environment variables and create config
+        env_vars = {}
+        for key, value in os.environ.items():
+            if value is not None:
+                env_vars[key.lower()] = value
+        
+        _config_instance = FinOpsConfig(**env_vars)
         _config_instance.validate_required_config()
         _config_instance.configure_logging()
     

@@ -1,0 +1,70 @@
+{
+  "resourceGroupName": {
+    "Type": "String",
+    "Value": "pike-dev-rg"
+  },
+  "logAnalyticsWorkspaceId": {
+    "Type": "String",
+    "Value": "/subscriptions/f97772c2-6385-4f23-8cda-22295a1ad20b/resourceGroups/pike-dev-rg/providers/Microsoft.OperationalInsights/workspaces/pike-dev-law-6v5sbjvrgatqy"
+  },
+  "logAnalyticsWorkspaceName": {
+    "Type": "String",
+    "Value": "pike-dev-law-6v5sbjvrgatqy"
+  },
+  "appInsightsInstrumentationKey": {
+    "Type": "String",
+    "Value": "d74c54de-e281-4562-8137-06ceb99e911e"
+  },
+  "apimName": {
+    "Type": "String",
+    "Value": "pike-dev-apim-6v5sbjvrgatqy"
+  },
+  "apimGatewayUrl": {
+    "Type": "String",
+    "Value": "https://pike-dev-apim-6v5sbjvrgatqy.azure-api.net"
+  },
+  "functionAppName": {
+    "Type": "String",
+    "Value": "pike-dev-func-6v5sbjvrgatqy"
+  },
+  "eventHubFunctionAppName": {
+    "Type": "String",
+    "Value": "pike-dev-ehfunc-6v5sbjvrgatqy"
+  },
+  "eventHubNamespace": {
+    "Type": "String",
+    "Value": "pike-dev-eh-6v5sbjvrgatqy"
+  },
+  "eventHubName": {
+    "Type": "String",
+    "Value": "finops-telemetry"
+  },
+  "eventHubApimConnectionString": {
+    "Type": "SecureString",
+    "Value": null
+  },
+  "apimLoggerName": {
+    "Type": "String",
+    "Value": "finops-eventhub-logger"
+  },
+  "storageAccountName": {
+    "Type": "String",
+    "Value": "pikedevsa6v5sbjvrga"
+  },
+  "keyVaultName": {
+    "Type": "String",
+    "Value": "pikedevkv6v5sbjvr"
+  },
+  "environment": {
+    "Type": "String",
+    "Value": "dev"
+  },
+  "location": {
+    "Type": "String",
+    "Value": "West US 3"
+  },
+  "debugStorageAccountName": {
+    "Type": "String",
+    "Value": "pikedevsa6v5sbjvrga"
+  }
+}

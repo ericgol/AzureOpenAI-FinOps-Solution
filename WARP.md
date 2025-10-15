@@ -197,6 +197,13 @@ python -m pytest tests/unit/ --cov=shared --cov-report=html
 black shared/ finops_timer_trigger/
 flake8 shared/ finops_timer_trigger/
 
+# Dependency Policy (Python)
+- Use `uv` (or Poetry) for env + locking.
+- Before proposing imports, check latest stable on PyPI and pick the newest compatible release.
+- Prefer semantic ranges (e.g., `pydantic>=2,<3`) unless a lockfile exists.
+- Do NOT suggest: `requests<2.30`, `boto3<1.35`, `tensorflow<2.12`, or any package flagged deprecated/unsafe.
+- If replacing an outdated lib, generate a migration diff and unit tests.
+
 # Type checking
 mypy shared/ finops_timer_trigger/
 ```
