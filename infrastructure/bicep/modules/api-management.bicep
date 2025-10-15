@@ -156,7 +156,7 @@ resource chatCompletionsOperation 'Microsoft.ApiManagement/service/apis/operatio
         description: 'Deployment ID of the model'
       }
     ]
-    description: 'Creates a model response for the given chat conversation'
+    description: 'Creates a model response for the given chat conversation. Custom headers (device-id, store-number) are handled by the FinOps policy.'
     request: {
       queryParameters: [
         {
@@ -166,24 +166,12 @@ resource chatCompletionsOperation 'Microsoft.ApiManagement/service/apis/operatio
           defaultValue: '2024-02-01'
         }
       ]
-      headers: [
+headers: [
         {
           name: 'Content-Type'
           type: 'string'
           defaultValue: 'application/json'
           required: true
-        }
-        {
-          name: 'device-id'
-          type: 'string'
-          required: false
-          description: 'Custom user identifier for cost allocation'
-        }
-        {
-          name: 'store-number'
-          type: 'string'
-          required: false
-          description: 'Store identifier for cost allocation'
         }
       ]
     }
