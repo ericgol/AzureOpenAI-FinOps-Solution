@@ -112,7 +112,7 @@ module privateDnsZones 'modules/private-dns-zones.bicep' = {
   }
 }
 
-// Deploy API Management
+// Deploy API Management (initial deployment without policies)
 module apim 'modules/api-management.bicep' = {
   scope: rg
   name: 'deploy-apim'
@@ -228,6 +228,19 @@ module apimEventHubLogger 'modules/apim-eventhub-logger.bicep' = {
   }
 }
 
+// Apply FinOps telemetry policy after EventHub logger is configured
+module apimFinOpsPolicy 'modules/apim-finops-policy.bicep' = {
+  scope: rg
+  name: 'deploy-apim-finops-policy'
+  params: {
+    apimName: apim.outputs.apimName
+    apiName: 'openai-api'
+  }
+  dependsOn: [
+    apimEventHubLogger // Ensure EventHub logger exists before applying policy
+  ]
+}
+
 // Deploy Key Vault for secrets management
 module keyVault 'modules/key-vault.bicep' = {
   scope: rg
@@ -283,6 +296,7 @@ output storageAccountName string = storage.outputs.storageAccountName
 output keyVaultName string = keyVault.outputs.keyVaultName
 output environment string = environment
 output location string = location
+output finOpsPolicyApplied bool = apimFinOpsPolicy.outputs.policyApplied
 
 // Debug output to verify storage account naming
 output debugStorageAccountName string = storageAccountName
