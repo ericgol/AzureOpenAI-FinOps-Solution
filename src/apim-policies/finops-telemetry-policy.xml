@@ -9,221 +9,126 @@ Apply this policy to your OpenAI API operations.
 <policies>
     <inbound>
         <base />
-        
         <!-- Extract custom attributes for cost allocation -->
-        <set-variable name="device-id" value="@{
-            // Try to get device-id from header first, then query parameter
-            var deviceId = context.Request.Headers.GetValueOrDefault("device-id", "");
-            if (string.IsNullOrEmpty(deviceId)) {
-                deviceId = context.Request.Url.Query.GetValueOrDefault("device-id", "");
-            }
-            if (string.IsNullOrEmpty(deviceId)) {
-                deviceId = context.Request.Headers.GetValueOrDefault("x-device-id", "");
-            }
-            return string.IsNullOrEmpty(deviceId) ? "unknown" : deviceId ;
-        }" />
-        
-        <set-variable name="store-number" value="@{
-            // Try to get store-number from header first, then query parameter
-            var storeNumber = context.Request.Headers.GetValueOrDefault("store-number", "");
-            if (string.IsNullOrEmpty(storeNumber)) {
-                storeNumber = context.Request.Url.Query.GetValueOrDefault("store-number", "");
-            }
-            if (string.IsNullOrEmpty(storeNumber)) {
-                storeNumber = context.Request.Headers.GetValueOrDefault("x-store-number", "");
-            }
-            return string.IsNullOrEmpty(storeNumber) ? "unknown" : storeNumber;
-        }" />
-        
+        <set-variable name="deviceId" value="@(context.Request.Headers.GetValueOrDefault("device_id", "unknown"))" />
+        <set-variable name="storeNumber" value="@(context.Request.Headers.GetValueOrDefault("store_number", "unknown"))" />
         <!-- Store request timestamp and generate correlation ID -->
         <set-variable name="request-timestamp" value="@(DateTime.UtcNow)" />
         <set-variable name="correlation-id" value="@(Guid.NewGuid().ToString())" />
-        
         <!-- Extract API version and deployment info -->
         <set-variable name="api-version" value="@(context.Request.Url.Query.GetValueOrDefault("api-version", ""))" />
         <set-variable name="deployment-id" value="@(context.Request.MatchedParameters.GetValueOrDefault("deployment-id", ""))" />
-        
         <!-- Add correlation ID to request headers for downstream tracking -->
         <set-header name="x-correlation-id" exists-action="override">
             <value>@((string)context.Variables["correlation-id"])</value>
         </set-header>
-        
+        <set-header name="x-deployment-id" exists-action="override">
+            <value>@((string)context.Variables["deployment-id"])</value>
+        </set-header>
         <!-- Add custom dimensions to request context -->
         <set-variable name="custom-dimensions" value="@{
             var dimensions = new JObject();
-            dimensions["device-id"] = (string)context.Variables["device-id"];
-            dimensions["store-number"] = (string)context.Variables["store-number"];
+            dimensions["device-id"] = (string)context.Variables["deviceId"];
+            dimensions["store-number"] = (string)context.Variables["storeNumber"];
             dimensions["api-version"] = (string)context.Variables["api-version"];
             dimensions["deployment-id"] = (string)context.Variables["deployment-id"];
-            dimensions["subscription-id"] = (string)context.Subscription.Id;
-            dimensions["product-id"] = (string)context.Product.Id;
-            dimensions["subscription-id"] = context.Subscription.Id ?? "";
-            dimensions["product-id"] = context.Product.Id ?? "";
-            dimensions["api-id"] = context.Api.Id;
-            dimensions["operation-id"] = context.Operation.Id;
+            dimensions["subscription-id"] = (string)context.Subscription?.Id;
+            dimensions["product-id"] = (string)context.Product?.Id;
+            dimensions["api-id"] = (string)context.Api?.Id;
+            dimensions["operation-id"] = (string)context.Operation?.Id;
             return dimensions.ToString();
         }" />
     </inbound>
-    
     <backend>
         <base />
     </backend>
-    
     <outbound>
         <base />
-        
         <!-- Calculate response time -->
         <set-variable name="response-time" value="@((int)(DateTime.UtcNow - (DateTime)context.Variables["request-timestamp"]).TotalMilliseconds)" />
-        
         <!-- Extract token usage from response if available -->
-        <set-variable name="tokens-used" value="@{
-            var tokensUsed = 0;
-            try {
-                if (context.Response.StatusCode == 200) {
-                    var responseBody = context.Response.Body?.As<JObject>(preserveContent: true);
-                    if (responseBody != null && responseBody["usage"] != null) {
-                        tokensUsed = (int)(responseBody["usage"]["total_tokens"] ?? 0);
-                    }
-                }
-            }
-            catch (Exception ex) {
-                // Log parsing error but don't fail the request
-                context.Trace($"Error parsing tokens utilized: {ex.Message}");
-            }
-            return tokensUsed;
-        }" />
-        
+        <set-variable name="tokensUsed" value="@{
+        var body = context.Response.Body.As<JObject>(preserveContent: true);
+        return body["usage"]?["total_tokens"]?.Value<int>() ?? 0;
+    }" />
         <!-- Extract prompt and completion tokens if available -->
-        <set-variable name="prompt-tokens" value="@{
-            var promptTokens = 0;
-            try {
-                if (context.Response.StatusCode == 200) {
-                    var responseBody = context.Response.Body?.As<JObject>(preserveContent: true);
-                    if (responseBody != null && responseBody["usage"] != null) {
-                        promptTokens = (int)(responseBody["usage"]["prompt_tokens"] ?? 0);
-                    }
-                }
-            }
-            catch (Exception ex) {
-                // Log parsing error but don't fail the request
-                context.Trace($"Error parsing prompt token usage: {ex.Message}");
-            }
-            return promptTokens;
-        }" />
-        
-        <set-variable name="completion-tokens" value="@{
-            var completionTokens = 0;
-            try {
-                if (context.Response.StatusCode == 200) {
-                    var responseBody = context.Response.Body?.As<JObject>(preserveContent: true);
-                    if (responseBody != null && responseBody["usage"] != null) {
-                        completionTokens = (int)(responseBody["usage"]["completion_tokens"] ?? 0);
-                    }
-                }
-            }
-            catch (Exception ex) {
-                // Log parsing error but don't fail the request
-                context.Trace($"Error parsing completion token usage: {ex.Message}");
-            }
-            return completionTokens;
-        }" />
-        
+        <set-variable name="promptTokens" value="@{
+        var body = context.Response.Body.As<JObject>(preserveContent: true);
+        return body["usage"]?["prompt_tokens"]?.Value<int>() ?? 0;
+    }" />
+        <set-variable name="completionTokens" value="@{
+        var body = context.Response.Body.As<JObject>(preserveContent: true);
+        return body["usage"]?["completion_tokens"]?.Value<int>() ?? 0;
+    }" />
         <!-- Extract model information -->
-        <set-variable name="model-name" value="@{
-            var modelName = "";
-            try {
-                if (context.Response.StatusCode == 200) {
-                    var responseBody = context.Response.Body?.As<JObject>(preserveContent: true);
-                    if (responseBody != null && responseBody["model"] != null) {
-                        modelName = responseBody["model"].ToString();
-                    }
-                }
-            }
-              catch (Exception ex) {
-                // Log parsing error but don't fail the request
-                context.Trace($"Error parsing model name: {ex.Message}");
-            }
-            return modelName;
-        }" />
-        
+        <set-variable name="modelName" value="@{
+        var body = context.Response.Body.As<JObject>(preserveContent: true);
+        return body["model"];
+    }" />
         <!-- Log telemetry to EventHub -->
         <!-- Logger must be registered with APIM prior to policy save -->
-        <log-to-eventhub logger-id="finops-eventhub-logger" partition-id="0">
-            @{
-                var telemetryData = new JObject(
-                    new JProperty("eventType", "FinOpsApiCall"),
-                    new JProperty("timestamp", context.Variables["request-timestamp"]),
-                    new JProperty("correlationId", context.Variables["correlation-id"]),
-                    new JProperty("deviceId", context.Variables["device-id"]),
-                    new JProperty("storeNumber", context.Variables["store-number"]),
-                    new JProperty("apiName", context.Api.Name),
-                    new JProperty("operationName", context.Operation.Name),
-                    new JProperty("method", context.Request.Method),
-                    new JProperty("url", context.Request.Url),
-                    new JProperty("statusCode", context.Response.StatusCode),
-                    new JProperty("responseTime", context.Variables["response-time"]),
-                    new JProperty("tokensUsed", context.Variables["tokens-used"]),
-                    new JProperty("promptTokens", context.Variables["prompt-tokens"]),
-                    new JProperty("completionTokens", context.Variables["completion-tokens"]),
-                    new JProperty("modelName", context.Variables["model-name"]),
-                    new JProperty("apiVersion", context.Variables["api-version"]),
-                    new JProperty("deploymentId", context.Variables["deployment-id"]),
-                    new JProperty("subscriptionId", context.Subscription?.Id ?? ""),
-                    new JProperty("productId", context.Product?.Id ?? ""),
-                    new JProperty("resourceRegion", context.Deployment.Region),
-                    new JProperty("requestSize", context.Request.Body?.As<string>(preserveContent: true)?.Length ?? 0),
-                    new JProperty("responseSize", context.Response.Body?.As<string>(preserveContent: true)?.Length ?? 0)
-                );
-                
-                return telemetryData.ToString();
-            }
-        </log-to-eventhub>
-        
+        <log-to-eventhub logger-id="finops-eventhub-logger" partition-id="0">@{
+                var responseBody = context.Response.Body?.As<JObject>(preserveContent: true);
+                var telemetryData = new JObject();
+                telemetryData["eventType"] = "FinOpsApiCall";
+                telemetryData["timestamp"] = ((DateTimeOffset)context.Timestamp).ToString("o");
+                telemetryData["correlationId"] = (string)context.Variables["correlation-id"];
+                telemetryData["deviceId"] = (string)context.Variables["deviceId"];
+                telemetryData["url"] = ((string)context.Request.Url.ToString());
+                telemetryData["storeNumber"] = (string)context.Variables["storeNumber"];
+                telemetryData["apiName"] = (string)context.Api?.Name;
+                telemetryData["operationName"] = (string)context.Operation?.Name;
+                telemetryData["method"] = (string)context.Request?.Method;
+                telemetryData["statusCode"] = (Int32)context.Response.StatusCode;
+                telemetryData["tokensUsed"] = (Int32)context.Variables["tokensUsed"];
+                telemetryData["promptTokens"] = (Int32)context.Variables["promptTokens"];
+                telemetryData["completionTokens"] = (Int32)context.Variables["completionTokens"];
+                telemetryData["model"] = responseBody?["model"]?.ToString() ?? "unknown";
+                telemetryData["apiVersion"] = (string)context.Variables["api-version"];
+                telemetryData["deploymentId"] = (string)context.Request.Headers.GetValueOrDefault("x-deployment-id", "unknown");
+                telemetryData["subscriptionId"] = (string)context.Subscription?.Id ?? "";
+                telemetryData["productId"] = (string)context.Product?.Id ?? "";
+                telemetryData["resourceRegion"] = (string)context.Deployment?.Region;
+                telemetryData["responseTime"] = ((Int32)context.Variables["response-time"]).ToString();
+                return telemetryData.ToString(Newtonsoft.Json.Formatting.None);
+            }</log-to-eventhub>
         <!-- Add custom headers to response for debugging -->
         <set-header name="x-finops-device-id" exists-action="override">
-            <value>@((string)context.Variables["device-id"])</value>
+            <value>@((string)context.Variables["deviceId"])</value>
         </set-header>
-        
         <set-header name="x-finops-store-number" exists-action="override">
-            <value>@((string)context.Variables["store-number"])</value>
+            <value>@((string)context.Variables["storeNumber"])</value>
         </set-header>
-        
         <set-header name="x-finops-correlation-id" exists-action="override">
             <value>@((string)context.Variables["correlation-id"])</value>
         </set-header>
-        
         <set-header name="x-finops-tokens-used" exists-action="override">
-            <value>@((string)context.Variables["tokens-used"])</value>
+            <value>@(((Int32)context.Variables["tokensUsed"]).ToString())</value>
         </set-header>
     </outbound>
-    
     <on-error>
         <base />
-        
         <!-- Log errors with context for debugging -->
         <!-- Logger must be registered with APIM prior to policy save -->
-        <log-to-eventhub logger-id="finops-eventhub-logger" partition-id="0">
-            @{
-                var errorData = new JObject(
-                    new JProperty("eventType", "FinOpsApiError"),
-                    new JProperty("timestamp", context.Variables["request-timestamp"]),
-                    new JProperty("correlationId", context.Variables["correlation-id"]),
-                    new JProperty("deviceId", context.Variables["device-id"]),
-                    new JProperty("storeNumber", context.Variables["store-number"]),
-                    new JProperty("apiName", context.Api.Name),
-                    new JProperty("operationName", context.Operation.Name),
-                    new JProperty("method", context.Request.Method),
-                    new JProperty("url", context.Request.Url),
-                    new JProperty("statusCode", context.Response?.StatusCode ?? 500),
-                    new JProperty("responseTime", (int)(DateTime.UtcNow - (DateTime)context.Variables["request-timestamp"]).TotalMilliseconds),
-                    new JProperty("errorMessage", context.LastError?.Message ?? "Unknown error"),
-                    new JProperty("errorSource", context.LastError?.Source ?? ""),
-                    new JProperty("subscriptionId", context.Subscription?.Id ?? ""),
-                    new JProperty("productId", context.Product?.Id ?? "")
-                );
+        <log-to-eventhub logger-id="finops-eventhub-logger" partition-id="0">@{
+                var errorData = new JObject();
+                errorData["eventType"] = "FinOpsApiError";
+                errorData["timestamp"] = ((DateTimeOffset)context.Timestamp).ToString("o");
+                errorData["correlationId"] = (string)context.Variables["correlation-id"];
+                errorData["deviceId"] = (string)context.Variables["deviceId"];
+                errorData["storeNumber"] = (string)context.Variables["storeNumber"];
+                errorData["apiName"] = (string)context.Api?.Name;
+                errorData["operationName"] = (string)context.Operation?.Name;
+                errorData["method"] = (string)context.Request?.Method;
+                errorData["statusCode"] = (Int32)context.Response.StatusCode;
+                errorData["responseTime"] = ((Int32)context.Variables["response-time"]).ToString();
+                errorData["errorMessage"] = (string)context.LastError?.Message ?? "Unknown error";
+                errorData["errorSource"] = (string)context.LastError?.Source ?? "";
+                errorData["subscriptionId"] = (string)context.Subscription?.Id ?? "";
+                errorData["productId"] = (string)context.Product?.Id ?? "";
                 
-                return errorData.ToString();
+                return errorData.ToString(Newtonsoft.Json.Formatting.None);
             }
-        </log-to-eventhub>
+         </log-to-eventhub>
     </on-error>
-</policies>  
+</policies>
