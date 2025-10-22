@@ -8,7 +8,7 @@ Implements Step 6 of the FinOps solution: Data Storage with partitioned schema.
 import logging
 import json
 import os
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import List, Dict, Any, Optional
 import pandas as pd
 from azure.identity import DefaultAzureCredential
@@ -117,7 +117,7 @@ class StorageManager:
             partition_path = f"{year}/{month}/{day}"
             
             # Generate timestamp for unique file naming
-            timestamp = datetime.utcnow().strftime("%H%M%S")
+            timestamp = datetime.now(timezone.utc).strftime("%H%M%S")
             
             # Store in multiple formats for different use cases
             paths = self._store_partition_data(group, partition_path, timestamp)
@@ -173,8 +173,9 @@ class StorageManager:
         Returns:
             Dictionary with summary file paths
         """
-        processing_date = datetime.utcnow().strftime("%Y-%m-%d")
-        timestamp = datetime.utcnow().strftime("%H%M%S")
+        now_utc = datetime.now(timezone.utc)
+        processing_date = now_utc.strftime("%Y-%m-%d")
+        timestamp = now_utc.strftime("%H%M%S")
         
         # Device summary
         device_summary = df.groupby(['DeviceId', 'StoreNumber']).agg({
@@ -232,7 +233,7 @@ class StorageManager:
         """
         self.logger.info(f"Storing raw data: {len(telemetry_data)} telemetry, {len(cost_data)} cost records")
         
-        timestamp = datetime.utcnow().strftime("%Y-%m-%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%S")
         paths = {}
         
         # Store raw telemetry data
@@ -451,7 +452,7 @@ class StorageManager:
         """
         self.logger.info(f"Starting data cleanup with {retention_days} day retention")
         
-        cutoff_date = datetime.utcnow() - pd.Timedelta(days=retention_days)
+        cutoff_date = datetime.now(timezone.utc) - pd.Timedelta(days=retention_days)
         cleanup_stats = {
             'deleted_blobs': 0,
             'freed_bytes': 0

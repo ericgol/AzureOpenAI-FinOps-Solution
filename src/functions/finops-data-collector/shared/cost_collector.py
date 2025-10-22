@@ -7,7 +7,7 @@ Implements Step 4 of the FinOps solution: Retrieve Cost Data.
 
 import logging
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional
 from decimal import Decimal
 from azure.identity import DefaultAzureCredential
@@ -62,7 +62,7 @@ class CostCollector:
         
         try:
             # Calculate time range
-            end_time = datetime.utcnow()
+            end_time = datetime.now(timezone.utc)
             start_time = end_time - timedelta(hours=self.config.lookback_hours)
             
             # Create query definition
@@ -221,7 +221,7 @@ class CostCollector:
         resource_id = record.get('ResourceId', '')
         cost = float(record.get('totalCost', 0))
         usage_quantity = float(record.get('usageQuantity', 0))
-        usage_date = record.get('UsageDate', datetime.utcnow().date())
+        usage_date = record.get('UsageDate', datetime.now(timezone.utc).date())
         
         # Normalize resource information
         normalized = {

@@ -8,7 +8,7 @@ including time-weighted allocation, device usage patterns, and predictive analyt
 import logging
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
@@ -78,7 +78,7 @@ class AdvancedCorrelator:
         cost_df['UsageDate'] = pd.to_datetime(cost_df['UsageDate'])
         
         # Calculate time weights (exponential decay)
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         
         # Calculate time weights for telemetry
         telemetry_df['TimeWeight'] = self._calculate_time_weight(
@@ -172,7 +172,7 @@ class AdvancedCorrelator:
         df['Hour'] = df['TimeGenerated'].dt.hour
         
         # Filter to lookback period
-        cutoff_date = datetime.utcnow() - timedelta(days=lookback_days)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=lookback_days)
         df = df[df['TimeGenerated'] >= cutoff_date]
         
         patterns = []

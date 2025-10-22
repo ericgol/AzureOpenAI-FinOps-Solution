@@ -9,7 +9,7 @@ and storeNumber for cost attribution rather than individual user tracking.
 """
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
@@ -325,8 +325,9 @@ class DataCorrelator:
         
         for record in allocated_records:
             # Add timestamps
-            record['CorrelationTimestamp'] = datetime.utcnow().isoformat()
-            record['ProcessingDate'] = datetime.utcnow().date().isoformat()
+            now_utc = datetime.now(timezone.utc)
+            record['CorrelationTimestamp'] = now_utc.isoformat()
+            record['ProcessingDate'] = now_utc.date().isoformat()
             
             # Add device/store categorization
             record['IsUnknownDevice'] = record['DeviceId'] == 'unknown'

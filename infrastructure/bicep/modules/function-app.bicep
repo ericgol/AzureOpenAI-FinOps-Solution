@@ -24,7 +24,7 @@ param costManagementScope string
 param environment string
 
 @description('Python version')
-param pythonVersion string = '3.11'
+param pythonVersion string = '3.12'
 
 
 @description('Enable managed identity for storage')

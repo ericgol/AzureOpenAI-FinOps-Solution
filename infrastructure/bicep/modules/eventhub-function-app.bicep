@@ -54,7 +54,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
     serverFarmId: appServicePlan.id
     reserved: true
     siteConfig: {
-      linuxFxVersion: 'Python|3.11'
+      linuxFxVersion: 'Python|3.12'
       appSettings: [
         {
           name: 'AzureWebJobsStorage'
@@ -114,7 +114,7 @@ resource functionApp 'Microsoft.Web/sites@2022-09-01' = {
         ]
       }
       use32BitWorkerProcess: false
-      pythonVersion: '3.11'
+      pythonVersion: '3.12'
     }
     httpsOnly: true
     // Keep public access enabled initially to allow file share creation

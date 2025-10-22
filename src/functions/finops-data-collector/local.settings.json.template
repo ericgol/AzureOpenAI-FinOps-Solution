@@ -1,0 +1,29 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "FUNCTIONS_EXTENSION_VERSION": "~4",
+    "PYTHON_ISOLATE_WORKER_DEPENDENCIES": "0",
+    
+    "LOG_ANALYTICS_WORKSPACE_ID": "your-log-analytics-workspace-id",
+    "COST_MANAGEMENT_SCOPE": "/subscriptions/your-subscription-id",
+    "STORAGE_ACCOUNT_NAME": "your-storage-account-name",
+    
+    "APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=your-instrumentation-key;IngestionEndpoint=https://your-region.in.applicationinsights.azure.com/;LiveEndpoint=https://your-region.livediagnostics.monitor.azure.com/",
+    
+    "AZURE_CLIENT_ID": "your-managed-identity-client-id",
+    "AZURE_TENANT_ID": "your-tenant-id",
+    
+    "ENVIRONMENT": "dev",
+    "DATA_COLLECTION_INTERVAL_MINUTES": "6",
+    "LOOKBACK_HOURS": "1",
+    "DEFAULT_ALLOCATION_METHOD": "token-based",
+    
+    "LOG_LEVEL": "INFO"
+  },
+  "Host": {
+    "CORS": "*",
+    "CORSCredentials": false
+  }
+}
