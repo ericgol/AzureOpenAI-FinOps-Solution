@@ -186,7 +186,7 @@ def create_span_attributes(telemetry_data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 @app.function_name(name="eventhub_to_appinsights")
-@app.event_hub_message(
+@app.event_hub_message_trigger(
     arg_name="events",
     event_hub_name="%EventHubName%",
     connection="EventHubConnection",
