@@ -205,7 +205,7 @@ class FinOpsConfig(BaseModel):
                     ResponseSize = ResponseSize
                 | where StatusCode > 0
                 | order by TimeGenerated desc
-            """
+            """,
             
             "app_insights_requests": """
                 requests
