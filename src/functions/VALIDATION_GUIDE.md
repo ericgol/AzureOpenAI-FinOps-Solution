@@ -142,6 +142,17 @@ az functionapp log tail \
 
 ## 2. FinOps Data Collector Function Validation
 
+
+The finops-data-collector function app requires the following Azure RBAC role assignments on its system-assigned managed identity:
+
+Role Assignments
+
+| Role | Scope | Purpose |
+|------|-------|---------|
+| Cost Management Reader | Subscription level | Query Azure Cost Management API for cost data |
+| Log Analytics Reader | Resource Group or Workspace level | Query Log Analytics for APIM telemetry logs |
+| Storage Blob Data Contributor | Storage Account level | Write correlated FinOps data to Azure Storage |
+
 ### A. Manually Trigger Function (Recommended)
 
 ```bash
