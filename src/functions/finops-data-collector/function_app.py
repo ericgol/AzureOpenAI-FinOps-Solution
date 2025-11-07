@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from typing import Dict, List
 import pandas as pd
 from azure.identity import DefaultAzureCredential
-from shared.config import FinOpsConfig
+from shared.config import get_config
 from shared.telemetry_collector import TelemetryCollector
 from shared.cost_collector import CostCollector
 from shared.data_correlator import DataCorrelator
@@ -53,7 +53,7 @@ def finops_timer_trigger(mytimer: func.TimerRequest) -> None:
         logging.warning('Timer trigger is running late!')
     
     # Initialize configuration
-    config = FinOpsConfig()
+    config = get_config()
     
     # Initialize Azure credential with managed identity
     credential = DefaultAzureCredential()
