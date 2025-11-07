@@ -139,6 +139,7 @@ def create_span_attributes(telemetry_data: Dict[str, Any]) -> Dict[str, Any]:
     event_type = telemetry_data.get('eventType', 'Unknown')
     
     # Core FinOps attributes for cost analysis
+    # Field names match what APIM policy sends
     attributes = {
         'event.type': event_type,
         'correlation.id': telemetry_data.get('correlationId', ''),
@@ -153,14 +154,13 @@ def create_span_attributes(telemetry_data: Dict[str, Any]) -> Dict[str, Any]:
         'ai.tokens.used': telemetry_data.get('tokensUsed', 0),
         'ai.tokens.prompt': telemetry_data.get('promptTokens', 0),
         'ai.tokens.completion': telemetry_data.get('completionTokens', 0),
-        'ai.model.name': telemetry_data.get('modelName', ''),
+        'ai.model.name': telemetry_data.get('model', ''),  # APIM sends 'model' not 'modelName'
         'api.version': telemetry_data.get('apiVersion', ''),
         'deployment.id': telemetry_data.get('deploymentId', ''),
         'subscription.id': telemetry_data.get('subscriptionId', ''),
         'product.id': telemetry_data.get('productId', ''),
         'resource.region': telemetry_data.get('resourceRegion', ''),
-        'request.size_bytes': telemetry_data.get('requestSize', 0),
-        'response.size_bytes': telemetry_data.get('responseSize', 0)
+        'timestamp': telemetry_data.get('timestamp', '')
     }
     
     # Add error-specific attributes if present
