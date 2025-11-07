@@ -10,8 +10,33 @@ Apply this policy to your OpenAI API operations.
     <inbound>
         <base />
         <!-- Extract custom attributes for cost allocation -->
-        <set-variable name="deviceId" value="@(context.Request.Headers.GetValueOrDefault("device_id", "unknown"))" />
-        <set-variable name="storeNumber" value="@(context.Request.Headers.GetValueOrDefault("store_number", "unknown"))" />
+        <!-- Check both underscore and hyphen variants for compatibility -->
+        <set-variable name="deviceId" value="@{
+            var deviceId = context.Request.Headers.GetValueOrDefault("device-id", "");
+            if (string.IsNullOrEmpty(deviceId)) {
+                deviceId = context.Request.Headers.GetValueOrDefault("device_id", "");
+            }
+            if (string.IsNullOrEmpty(deviceId)) {
+                deviceId = context.Request.Url.Query.GetValueOrDefault("device-id", "");
+            }
+            if (string.IsNullOrEmpty(deviceId)) {
+                deviceId = context.Request.Url.Query.GetValueOrDefault("device_id", "");
+            }
+            return string.IsNullOrEmpty(deviceId) ? "unknown" : deviceId;
+        }" />
+        <set-variable name="storeNumber" value="@{
+            var storeNumber = context.Request.Headers.GetValueOrDefault("store-number", "");
+            if (string.IsNullOrEmpty(storeNumber)) {
+                storeNumber = context.Request.Headers.GetValueOrDefault("store_number", "");
+            }
+            if (string.IsNullOrEmpty(storeNumber)) {
+                storeNumber = context.Request.Url.Query.GetValueOrDefault("store-number", "");
+            }
+            if (string.IsNullOrEmpty(storeNumber)) {
+                storeNumber = context.Request.Url.Query.GetValueOrDefault("store_number", "");
+            }
+            return string.IsNullOrEmpty(storeNumber) ? "unknown" : storeNumber;
+        }" />
         <!-- Store request timestamp and generate correlation ID -->
         <set-variable name="request-timestamp" value="@(DateTime.UtcNow)" />
         <set-variable name="correlation-id" value="@(Guid.NewGuid().ToString())" />

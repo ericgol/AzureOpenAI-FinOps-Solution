@@ -241,13 +241,9 @@ def get_config() -> FinOpsConfig:
     global _config_instance
     
     if _config_instance is None:
-        # Read environment variables and create config
-        env_vars = {}
-        for key, value in os.environ.items():
-            if value is not None:
-                env_vars[key.lower()] = value
-        
-        _config_instance = FinOpsConfig(**env_vars)
+        # Pydantic will automatically read from os.environ based on validation_alias
+        # We just need to pass the environment variables as-is (case-sensitive)
+        _config_instance = FinOpsConfig.model_validate(os.environ)
         _config_instance.validate_required_config()
         _config_instance.configure_logging()
     
