@@ -185,7 +185,7 @@ class FinOpsConfig(BaseModel):
             "apim_logs": """
                 ApiManagementGatewayLogs
                 | where TimeGenerated >= ago({lookback_hours}h)
-                | where OperationName != ""
+                | where isnotempty(OperationId)
                 | extend deviceId = tostring(RequestHeaders["device-id"])
                 | extend storeNumber = tostring(RequestHeaders["store-number"])
                 | project 
@@ -193,16 +193,19 @@ class FinOpsConfig(BaseModel):
                     RequestId = CorrelationId,
                     deviceId = iif(deviceId == "", "unknown", deviceId),
                     storeNumber = iif(storeNumber == "", "unknown", storeNumber),
-                    ApiName = OperationName,
-                    Method = RequestMethod,
-                    Url = RequestUri,
+                    ApiName = ApiId,
+                    OperationName = OperationId,
+                    Method = Method,
+                    Url = Url,
                     StatusCode = ResponseCode,
-                    ResponseTime = DurationMs,
-                    TokensUsed = toint(ResponseHeaders["x-ratelimit-remaining-tokens"]),
-                    ResourceId = ResourceId
+                    ResponseTime = TotalTime,
+                    BackendTime = BackendTime,
+                    ClientTime = ClientTime,
+                    RequestSize = RequestSize,
+                    ResponseSize = ResponseSize
                 | where StatusCode > 0
                 | order by TimeGenerated desc
-            """,
+            """
             
             "app_insights_requests": """
                 requests

@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from azure.identity import DefaultAzureCredential
 from azure.monitor.query import LogsQueryClient, LogsQueryStatus
-from azure.monitor.query._exceptions import LogsQueryError
+from azure.core.exceptions import HttpResponseError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import pandas as pd
 from .config import FinOpsConfig
@@ -48,7 +48,7 @@ class TelemetryCollector:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=4, max=10),
-        retry=retry_if_exception_type(LogsQueryError)
+        retry=retry_if_exception_type(HttpResponseError)
     )
     def collect_apim_logs(self) -> List[Dict[str, Any]]:
         """
@@ -108,8 +108,14 @@ class TelemetryCollector:
             
             return telemetry_data
             
-        except LogsQueryError as e:
+        except HttpResponseError as e:
             self.logger.error(f"Log Analytics query error: {e}")
+            # Check if it's a permissions error
+            if "InsufficientAccessError" in str(e):
+                self.logger.error(
+                    "The function's managed identity lacks permissions to query Log Analytics. "
+                    "Grant 'Log Analytics Reader' role to the function app's managed identity."
+                )
             raise
         except Exception as e:
             self.logger.error(f"Error collecting APIM logs: {e}", exc_info=True)
@@ -118,7 +124,7 @@ class TelemetryCollector:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=4, max=10),
-        retry=retry_if_exception_type(LogsQueryError)
+        retry=retry_if_exception_type(HttpResponseError)
     )
     def collect_app_insights_data(self) -> List[Dict[str, Any]]:
         """
@@ -170,8 +176,12 @@ class TelemetryCollector:
             
             return telemetry_data
             
-        except LogsQueryError as e:
+        except HttpResponseError as e:
             self.logger.error(f"Application Insights query error: {e}")
+            if "InsufficientAccessError" in str(e):
+                self.logger.error(
+                    "The function's managed identity lacks permissions to query Log Analytics."
+                )
             return []
         except Exception as e:
             self.logger.error(f"Error collecting App Insights data: {e}", exc_info=True)
