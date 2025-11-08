@@ -14,6 +14,7 @@ from azure.identity import DefaultAzureCredential
 from azure.mgmt.costmanagement import CostManagementClient
 from azure.mgmt.costmanagement.models import QueryDefinition, QueryDataset, QueryAggregation, QueryGrouping, QueryTimePeriod
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from azure.core.exceptions import HttpResponseError
 import pandas as pd
 from .config import FinOpsConfig
 
@@ -47,13 +48,16 @@ class CostCollector:
             raise
     
     @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=4, max=10),
-        retry=retry_if_exception_type(Exception)
+        stop=stop_after_attempt(2),
+        wait=wait_exponential(multiplier=2, min=30, max=120),
+        retry=retry_if_exception_type(HttpResponseError)
     )
-    def collect_cost_data(self) -> List[Dict[str, Any]]:
+    def collect_cost_data(self, skip_on_throttle: bool = True) -> List[Dict[str, Any]]:
         """
         Collect cost data from Azure Cost Management API.
+        
+        Args:
+            skip_on_throttle: If True, return empty list on 429 errors instead of raising
         
         Returns:
             List of cost records with resource-level details
@@ -82,6 +86,21 @@ class CostCollector:
             self.logger.info(f"Collected {len(cost_data)} cost records")
             return cost_data
             
+        except HttpResponseError as e:
+            # Handle rate limiting gracefully
+            if e.status_code == 429:
+                self.logger.warning(
+                    f"Cost Management API rate limit hit (429). "
+                    f"API has strict throttling limits. Consider running less frequently."
+                )
+                if skip_on_throttle:
+                    self.logger.info("Skipping cost collection due to rate limit (will retry next run)")
+                    return []
+                else:
+                    raise
+            else:
+                self.logger.error(f"HTTP error collecting cost data: {e}", exc_info=True)
+                return []
         except Exception as e:
             self.logger.error(f"Error collecting cost data: {e}", exc_info=True)
             return []
@@ -104,56 +123,26 @@ class CostCollector:
         }
         
         # Define groupings for detailed breakdown
+        # Note: Only use valid Cost Management API dimensions
         groupings = [
             QueryGrouping(type="Dimension", name="ResourceId"),
             QueryGrouping(type="Dimension", name="ResourceType"),
             QueryGrouping(type="Dimension", name="ServiceName"),
-            QueryGrouping(type="Dimension", name="MeterName"),
-            QueryGrouping(type="Dimension", name="UsageDate")
+            QueryGrouping(type="Dimension", name="Meter")  # Changed from MeterName
         ]
         
         # Create dataset with filters for OpenAI resources
+        # Use only ServiceName filter as Meter filter is too restrictive and uses invalid dimension
         dataset = QueryDataset(
             granularity="Daily",
             aggregation=aggregations,
             grouping=groupings,
             filter={
-                "and": [
-                    {
-                        "dimensions": {
-                            "name": "ServiceName",
-                            "operator": "In",
-                            "values": ["Azure OpenAI", "Cognitive Services"]
-                        }
-                    },
-                    {
-                        "dimensions": {
-                            "name": "MeterName",
-                            "operator": "In", 
-                            "values": [
-                                "Standard Input Tokens",
-                                "Standard Output Tokens", 
-                                "PTU Hours",
-                                "Fine-tuning Training Hours",
-                                "Fine-tuning Inference",
-                                "GPT-4 Input Tokens",
-                                "GPT-4 Output Tokens",
-                                "GPT-4o Input Tokens",
-                                "GPT-4o Output Tokens",
-                                "GPT-4 Turbo Input Tokens",
-                                "GPT-4 Turbo Output Tokens",
-                                "GPT-3.5-Turbo Input Tokens",
-                                "GPT-3.5-Turbo Output Tokens",
-                                "GPT-5 Input Tokens",
-                                "GPT-5 Output Tokens",
-                                "GPT-5-Turbo Input Tokens",
-                                "GPT-5-Turbo Output Tokens",
-                                "GPT-5-Preview Input Tokens",
-                                "GPT-5-Preview Output Tokens"
-                            ]
-                        }
-                    }
-                ]
+                "dimensions": {
+                    "name": "ServiceName",
+                    "operator": "In",
+                    "values": ["Azure OpenAI", "Cognitive Services"]
+                }
             }
         )
         
@@ -221,14 +210,16 @@ class CostCollector:
         resource_id = record.get('ResourceId', '')
         cost = float(record.get('totalCost', 0))
         usage_quantity = float(record.get('usageQuantity', 0))
+        # UsageDate is returned from the query result
         usage_date = record.get('UsageDate', datetime.now(timezone.utc).date())
         
         # Normalize resource information
+        # Note: Meter is the correct field name, not MeterName
         normalized = {
             'ResourceId': resource_id,
             'ResourceType': record.get('ResourceType', 'Unknown'),
             'ServiceName': record.get('ServiceName', 'Azure OpenAI'),
-            'MeterName': record.get('MeterName', 'Unknown'),
+            'MeterName': record.get('Meter', 'Unknown'),  # Meter from API, stored as MeterName
             'UsageDate': usage_date,
             'Cost': cost,
             'UsageQuantity': usage_quantity,

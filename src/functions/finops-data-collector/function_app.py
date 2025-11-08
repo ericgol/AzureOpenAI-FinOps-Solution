@@ -59,10 +59,10 @@ def finops_timer_trigger(mytimer: func.TimerRequest) -> None:
     credential = DefaultAzureCredential()
     
     try:
-        # Step 1: Collect telemetry data from Log Analytics
-        logging.info("Step 1: Collecting telemetry data from Log Analytics")
+        # Step 1: Collect telemetry data from Application Insights traces
+        logging.info("Step 1: Collecting telemetry data from Application Insights traces")
         telemetry_collector = TelemetryCollector(config, credential)
-        telemetry_data = telemetry_collector.collect_apim_logs()
+        telemetry_data = telemetry_collector.collect_app_insights_traces()
         logging.info(f"Collected {len(telemetry_data)} telemetry records")
         
         # Step 2: Collect cost data from Cost Management API

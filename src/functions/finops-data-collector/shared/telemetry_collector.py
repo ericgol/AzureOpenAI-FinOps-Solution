@@ -91,7 +91,8 @@ class TelemetryCollector:
                 table = response.tables[0]
                 
                 # Convert table data to list of dictionaries
-                columns = [col.name for col in table.columns]
+                # Handle both string columns and column objects
+                columns = [col if isinstance(col, str) else col.name for col in table.columns]
                 
                 for row in table.rows:
                     record = {}
@@ -119,6 +120,73 @@ class TelemetryCollector:
             raise
         except Exception as e:
             self.logger.error(f"Error collecting APIM logs: {e}", exc_info=True)
+            return []
+    
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        retry=retry_if_exception_type(HttpResponseError)
+    )
+    def collect_app_insights_traces(self) -> List[Dict[str, Any]]:
+        """
+        Collect Application Insights traces with FinOps telemetry data.
+        
+        Returns:
+            List of Application Insights trace records with parsed FinOps data
+        """
+        self.logger.info("Starting Application Insights traces collection")
+        
+        try:
+            # Get KQL query for Application Insights traces
+            queries = self.config.get_kql_queries()
+            query = queries["app_insights_traces"].format(lookback_hours=self.config.lookback_hours)
+            
+            self.logger.debug(f"Executing App Insights traces KQL query: {query}")
+            
+            # Execute query
+            response = self.logs_client.query_workspace(
+                workspace_id=self.config.log_analytics_workspace_id,
+                query=query,
+                timespan=timedelta(hours=self.config.lookback_hours)
+            )
+            
+            if response.status == LogsQueryStatus.PARTIAL:
+                self.logger.warning("App Insights traces query returned partial results")
+            elif response.status == LogsQueryStatus.FAILURE:
+                self.logger.error("App Insights traces query failed completely")
+                return []
+            
+            # Convert to list of dictionaries
+            telemetry_data = []
+            if response.tables and len(response.tables) > 0:
+                table = response.tables[0]
+                # Handle both string columns and column objects
+                columns = [col if isinstance(col, str) else col.name for col in table.columns]
+                
+                for row in table.rows:
+                    record = {}
+                    for i, value in enumerate(row):
+                        record[columns[i]] = value
+                    
+                    # Post-process the record
+                    processed_record = self._process_apim_record(record)
+                    telemetry_data.append(processed_record)
+                
+                self.logger.info(f"Collected {len(telemetry_data)} App Insights trace records")
+            else:
+                self.logger.info("No Application Insights traces found in specified time range")
+            
+            return telemetry_data
+            
+        except HttpResponseError as e:
+            self.logger.error(f"Application Insights traces query error: {e}")
+            if "InsufficientAccessError" in str(e):
+                self.logger.error(
+                    "The function's managed identity lacks permissions to query Log Analytics."
+                )
+            return []
+        except Exception as e:
+            self.logger.error(f"Error collecting App Insights traces: {e}", exc_info=True)
             return []
     
     @retry(
@@ -159,7 +227,8 @@ class TelemetryCollector:
             telemetry_data = []
             if response.tables and len(response.tables) > 0:
                 table = response.tables[0]
-                columns = [col.name for col in table.columns]
+                # Handle both string columns and column objects
+                columns = [col if isinstance(col, str) else col.name for col in table.columns]
                 
                 for row in table.rows:
                     record = {}

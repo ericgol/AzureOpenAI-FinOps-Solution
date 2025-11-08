@@ -207,6 +207,38 @@ class FinOpsConfig(BaseModel):
                 | order by TimeGenerated desc
             """,
             
+            "app_insights_traces": """
+                AppTraces
+                | where TimeGenerated >= ago({lookback_hours}h)
+                | where Message contains "FinOpsApiCall" or Message has_cs "device_id"
+                | extend parsedMessage = parse_json(Message)
+                | extend customDims = parsedMessage.customDimensions
+                | extend device_id = tostring(customDims.device_id)
+                | extend store_number = tostring(customDims.store_number)
+                | extend operation_name = tostring(customDims.operation_name)
+                | extend status_code = toint(customDims.status_code)
+                | extend response_time = todouble(customDims.response_time_ms)
+                | extend tokens_used = toint(customDims.tokens_used)
+                | extend request_id = tostring(customDims.request_id)
+                | extend resource_id = tostring(customDims.resource_id)
+                | extend url = tostring(customDims.url)
+                | extend method = tostring(customDims.method)
+                | project 
+                    TimeGenerated,
+                    RequestId = request_id,
+                    deviceId = iif(isempty(device_id), "unknown", device_id),
+                    storeNumber = iif(isempty(store_number), "unknown", store_number),
+                    ApiName = operation_name,
+                    Method = method,
+                    Url = url,
+                    StatusCode = status_code,
+                    ResponseTime = response_time,
+                    TokensUsed = tokens_used,
+                    ResourceId = resource_id
+                | where isnotnull(StatusCode) and StatusCode > 0
+                | order by TimeGenerated desc
+            """,
+            
             "app_insights_requests": """
                 requests
                 | where timestamp >= ago({lookback_hours}h)
