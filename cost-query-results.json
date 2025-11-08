@@ -1,0 +1,62 @@
+[
+  {
+    "PreTaxCost": 7.155e-05,
+    "UsageQuantity": 0.477,
+    "UsageDate": 20251018,
+    "ResourceId": "/subscriptions/f97772c2-6385-4f23-8cda-22295a1ad20b/resourcegroups/pike-ai-rg/providers/microsoft.cognitiveservices/accounts/pikeaif",
+    "ResourceType": "microsoft.cognitiveservices/accounts",
+    "ServiceName": "Cognitive Services",
+    "Meter": "gpt-4o-mini-0718-Inp-glbl Tokens",
+    "Currency": "USD"
+  },
+  {
+    "PreTaxCost": 0.005826,
+    "UsageQuantity": 9.71,
+    "UsageDate": 20251018,
+    "ResourceId": "/subscriptions/f97772c2-6385-4f23-8cda-22295a1ad20b/resourcegroups/pike-ai-rg/providers/microsoft.cognitiveservices/accounts/pikeaif",
+    "ResourceType": "microsoft.cognitiveservices/accounts",
+    "ServiceName": "Cognitive Services",
+    "Meter": "gpt-4o-mini-0718-Outp-glbl Tokens",
+    "Currency": "USD"
+  },
+  {
+    "PreTaxCost": 3.9e-05,
+    "UsageQuantity": 0.26,
+    "UsageDate": 20251019,
+    "ResourceId": "/subscriptions/f97772c2-6385-4f23-8cda-22295a1ad20b/resourcegroups/pike-ai-rg/providers/microsoft.cognitiveservices/accounts/pikeaif",
+    "ResourceType": "microsoft.cognitiveservices/accounts",
+    "ServiceName": "Cognitive Services",
+    "Meter": "gpt-4o-mini-0718-Inp-glbl Tokens",
+    "Currency": "USD"
+  },
+  {
+    "PreTaxCost": 0.0033228,
+    "UsageQuantity": 5.538,
+    "UsageDate": 20251019,
+    "ResourceId": "/subscriptions/f97772c2-6385-4f23-8cda-22295a1ad20b/resourcegroups/pike-ai-rg/providers/microsoft.cognitiveservices/accounts/pikeaif",
+    "ResourceType": "microsoft.cognitiveservices/accounts",
+    "ServiceName": "Cognitive Services",
+    "Meter": "gpt-4o-mini-0718-Outp-glbl Tokens",
+    "Currency": "USD"
+  },
+  {
+    "PreTaxCost": 8.55e-06,
+    "UsageQuantity": 0.057,
+    "UsageDate": 20251031,
+    "ResourceId": "/subscriptions/f97772c2-6385-4f23-8cda-22295a1ad20b/resourcegroups/pike-ai-rg/providers/microsoft.cognitiveservices/accounts/pikeaif",
+    "ResourceType": "microsoft.cognitiveservices/accounts",
+    "ServiceName": "Cognitive Services",
+    "Meter": "gpt-4o-mini-0718-Inp-glbl Tokens",
+    "Currency": "USD"
+  },
+  {
+    "PreTaxCost": 0.0006528,
+    "UsageQuantity": 1.088,
+    "UsageDate": 20251031,
+    "ResourceId": "/subscriptions/f97772c2-6385-4f23-8cda-22295a1ad20b/resourcegroups/pike-ai-rg/providers/microsoft.cognitiveservices/accounts/pikeaif",
+    "ResourceType": "microsoft.cognitiveservices/accounts",
+    "ServiceName": "Cognitive Services",
+    "Meter": "gpt-4o-mini-0718-Outp-glbl Tokens",
+    "Currency": "USD"
+  }
+]
