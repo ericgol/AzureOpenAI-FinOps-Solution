@@ -114,9 +114,9 @@ class DataCorrelator:
         """
         self.logger.debug("Preprocessing telemetry data for device/store correlation")
         
-        # Ensure timestamps are datetime objects
+        # Ensure timestamps are datetime objects with UTC timezone
         if 'TimeGenerated' in telemetry_df.columns:
-            telemetry_df['TimeGenerated'] = pd.to_datetime(telemetry_df['TimeGenerated'])
+            telemetry_df['TimeGenerated'] = pd.to_datetime(telemetry_df['TimeGenerated'], utc=True)
         
         # Clean and normalize device/store identifiers
         telemetry_df['deviceId'] = telemetry_df['deviceId'].fillna('unknown').astype(str)
@@ -150,9 +150,9 @@ class DataCorrelator:
         """
         self.logger.debug("Preprocessing cost data")
         
-        # Ensure timestamps are datetime objects
+        # Ensure timestamps are datetime objects with UTC timezone
         if 'UsageDate' in cost_df.columns:
-            cost_df['UsageDate'] = pd.to_datetime(cost_df['UsageDate'])
+            cost_df['UsageDate'] = pd.to_datetime(cost_df['UsageDate'], utc=True)
             # Create hourly time windows for better correlation
             cost_df['TimeWindow'] = cost_df['UsageDate'].dt.floor(f'{self.settings.time_window_minutes}min')
         
