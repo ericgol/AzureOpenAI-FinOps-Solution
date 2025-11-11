@@ -136,6 +136,10 @@ class DataCorrelator:
             if field in telemetry_df.columns:
                 telemetry_df[field] = pd.to_numeric(telemetry_df[field], errors='coerce').fillna(0)
         
+        # Normalize ResourceId for correlation
+        if 'ResourceId' in telemetry_df.columns:
+            telemetry_df['ResourceId'] = telemetry_df['ResourceId'].apply(self._normalize_resource_id)
+        
         return telemetry_df
     
     def _preprocess_cost_data(self, cost_df: pd.DataFrame) -> pd.DataFrame:
@@ -162,7 +166,53 @@ class DataCorrelator:
             if field in cost_df.columns:
                 cost_df[field] = pd.to_numeric(cost_df[field], errors='coerce').fillna(0)
         
+        # Normalize ResourceId for correlation
+        if 'ResourceId' in cost_df.columns:
+            cost_df['ResourceId'] = cost_df['ResourceId'].apply(self._normalize_resource_id)
+        
         return cost_df
+    
+    def _normalize_resource_id(self, resource_id: str) -> str:
+        """
+        Normalize ResourceId to a consistent format for correlation.
+        
+        Handles both full Azure resource IDs and OpenAI URLs.
+        Extracts the resource name as the common identifier.
+        
+        Args:
+            resource_id: Resource identifier (Azure resource ID or URL)
+            
+        Returns:
+            Normalized resource identifier
+        """
+        if not resource_id or resource_id == 'unknown':
+            return 'unknown'
+        
+        resource_id = str(resource_id).lower().strip()
+        
+        # If it's a full Azure resource ID, extract the resource name (last segment)
+        # Format: /subscriptions/{sub}/resourceGroups/{rg}/providers/Microsoft.CognitiveServices/accounts/{name}
+        if resource_id.startswith('/subscriptions/'):
+            parts = resource_id.split('/')
+            if len(parts) >= 2:
+                # Return the last part which is the resource name
+                return parts[-1]
+        
+        # If it's a URL, extract the hostname's first segment (resource name)
+        # Format: https://{resource-name}.openai.azure.com/...
+        if resource_id.startswith('http'):
+            try:
+                from urllib.parse import urlparse
+                parsed = urlparse(resource_id)
+                hostname = parsed.hostname or ''
+                # Extract resource name from hostname (first part before first dot)
+                resource_name = hostname.split('.')[0] if hostname else 'unknown'
+                return resource_name
+            except Exception:
+                pass
+        
+        # Return as-is if it's already a simple identifier
+        return resource_id
     
     def _correlate_by_time_window(self, telemetry_df: pd.DataFrame, cost_df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -188,6 +238,18 @@ class DataCorrelator:
         # Rename columns for clarity
         telemetry_grouped.columns = ['TimeWindow', 'ResourceId', 'DeviceId', 'StoreNumber', 'TotalTokens', 'ApiCalls', 'AvgResponseTime', 'DeviceStoreKey']
         
+        # Debug logging for correlation
+        self.logger.info(f"Telemetry: {len(telemetry_grouped)} grouped records")
+        if len(telemetry_grouped) > 0:
+            self.logger.debug(f"Telemetry ResourceIds: {telemetry_grouped['ResourceId'].unique().tolist()}")
+            self.logger.debug(f"Telemetry TimeWindows: {telemetry_grouped['TimeWindow'].min()} to {telemetry_grouped['TimeWindow'].max()}")
+        
+        self.logger.info(f"Cost data: {len(cost_df)} records")
+        if len(cost_df) > 0:
+            self.logger.debug(f"Cost ResourceIds: {cost_df['ResourceId'].unique().tolist()}")
+            self.logger.debug(f"Cost TimeWindows: {cost_df['TimeWindow'].min()} to {cost_df['TimeWindow'].max()}")
+            self.logger.info(f"Total cost in data: ${cost_df['Cost'].sum():.2f}")
+        
         # Merge with cost data on time window and resource
         merged_df = pd.merge(
             telemetry_grouped,
@@ -197,6 +259,9 @@ class DataCorrelator:
         )
         
         self.logger.info(f"Found {len(merged_df)} time window correlations for device/store combinations")
+        if len(merged_df) == 0 and len(telemetry_grouped) > 0 and len(cost_df) > 0:
+            self.logger.warning("No correlations found despite having both telemetry and cost data. Check ResourceId and TimeWindow alignment.")
+        
         return merged_df
     
     def _allocate_costs(self, correlated_df: pd.DataFrame) -> List[Dict[str, Any]]:

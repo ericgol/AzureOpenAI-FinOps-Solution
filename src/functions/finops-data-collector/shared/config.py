@@ -188,6 +188,15 @@ class FinOpsConfig(BaseModel):
                 | where isnotempty(OperationId)
                 | extend deviceId = tostring(RequestHeaders["device-id"])
                 | extend storeNumber = tostring(RequestHeaders["store-number"])
+                | extend tokensUsed = toint(ResponseHeaders["x-ms-token-usage-total"])
+                // Extract ResourceId - use BackendId if available, otherwise derive from BackendUrl
+                // BackendId in APIM is typically the full Azure resource ID of the backend
+                // BackendUrl format: https://<openai-resource>.openai.azure.com/...
+                | extend ResourceId = case(
+                    isnotempty(BackendId), BackendId,
+                    isnotempty(BackendUrl), BackendUrl,
+                    "unknown"
+                )
                 | project 
                     TimeGenerated,
                     RequestId = CorrelationId,
@@ -202,7 +211,10 @@ class FinOpsConfig(BaseModel):
                     BackendTime = BackendTime,
                     ClientTime = ClientTime,
                     RequestSize = RequestSize,
-                    ResponseSize = ResponseSize
+                    ResponseSize = ResponseSize,
+                    TokensUsed = tokensUsed,
+                    ResourceId = ResourceId,
+                    BackendUrl = BackendUrl
                 | where StatusCode > 0
                 | order by TimeGenerated desc
             """,
