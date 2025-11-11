@@ -94,10 +94,17 @@ class TelemetryCollector:
                 # Handle both string columns and column objects
                 columns = [col if isinstance(col, str) else col.name for col in table.columns]
                 
-                for row in table.rows:
+                # Debug: Log column names on first iteration
+                self.logger.debug(f"APIM query returned columns: {columns}")
+                
+                for idx, row in enumerate(table.rows):
                     record = {}
                     for i, value in enumerate(row):
                         record[columns[i]] = value
+                    
+                    # Debug: Log first record to see what we're getting
+                    if idx == 0:
+                        self.logger.debug(f"First APIM record raw data: {record}")
                     
                     # Post-process the record
                     processed_record = self._process_apim_record(record)
@@ -295,6 +302,12 @@ class TelemetryCollector:
         Returns:
             Processed record
         """
+        # Debug logging for ResourceId
+        resource_id_raw = record.get('ResourceId')
+        backend_url_raw = record.get('BackendUrl')
+        self.logger.debug(f"Raw ResourceId from query: {resource_id_raw} (type: {type(resource_id_raw)})")
+        self.logger.debug(f"Raw BackendUrl from query: {backend_url_raw} (type: {type(backend_url_raw)})")
+        
         processed = {
             'Source': 'APIM',
             'TimeGenerated': record.get('TimeGenerated'),
@@ -307,7 +320,7 @@ class TelemetryCollector:
             'StatusCode': int(record.get('StatusCode', 0)),
             'ResponseTime': int(record.get('ResponseTime', 0)),
             'TokensUsed': int(record.get('TokensUsed', 0)) if record.get('TokensUsed') else 0,
-            'ResourceId': record.get('ResourceId', '')
+            'ResourceId': record.get('ResourceId', '') or record.get('BackendUrl', '') or 'unknown'
         }
         
         # Ensure user and store IDs are not empty
