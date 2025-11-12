@@ -107,6 +107,7 @@ def eventhub_to_appinsights(events: List[func.EventHubEvent]) -> None:
                 "subscription_id": parsed_data.get('subscriptionId', ''),
                 "product_id": parsed_data.get('productId', ''),
                 "resource_region": parsed_data.get('resourceRegion', ''),
+                "resource_id": parsed_data.get('resourceId', ''),
                 
                 # Timestamp
                 "event_timestamp": parsed_data.get('timestamp', '')

@@ -90,6 +90,28 @@ Apply this policy to your OpenAI API operations.
         var body = context.Response.Body.As<JObject>(preserveContent: true);
         return body["model"];
     }" />
+        <!-- Extract backend resource ID for cost correlation -->
+        <set-variable name="resource-id" value="@{
+        // Extract from APIM backend service URL (configured in API settings)
+        var serviceUrl = context.Api?.ServiceUrl?.ToString() ?? "";
+        
+        // For Azure OpenAI, backend URL format: https://{resource-name}.openai.azure.com/...
+        if (!string.IsNullOrEmpty(serviceUrl) && serviceUrl.Contains(".openai.azure.com")) {
+            try {
+                var uri = new Uri(serviceUrl);
+                var hostname = uri.Host;
+                // Extract resource name from hostname (e.g., "my-openai-resource" from "my-openai-resource.openai.azure.com")
+                var parts = hostname.Split('.');
+                if (parts.Length > 0) {
+                    return parts[0];
+                }
+            } catch {
+                // Fall through to unknown
+            }
+        }
+        
+        return "unknown";
+    }" />
         <!-- Log telemetry to EventHub -->
         <!-- Logger must be registered with APIM prior to policy save -->
         <log-to-eventhub logger-id="finops-eventhub-logger" partition-id="0">@{
@@ -114,6 +136,7 @@ Apply this policy to your OpenAI API operations.
                 telemetryData["subscriptionId"] = (string)context.Subscription?.Id ?? "";
                 telemetryData["productId"] = (string)context.Product?.Id ?? "";
                 telemetryData["resourceRegion"] = (string)context.Deployment?.Region;
+                telemetryData["resourceId"] = (string)context.Variables["resource-id"];
                 telemetryData["responseTime"] = ((Int32)context.Variables["response-time"]).ToString();
                 return telemetryData.ToString(Newtonsoft.Json.Formatting.None);
             }</log-to-eventhub>
