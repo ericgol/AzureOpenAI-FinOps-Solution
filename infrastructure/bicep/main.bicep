@@ -41,6 +41,9 @@ param apimSku string = 'Developer'
 @description('Enable private networking (required for enterprise compliance)')
 param enablePrivateNetworking bool = false
 
+@description('Use Flex Consumption plan for EventHub function (recommended for production)')
+param useFlexConsumptionForEventHub bool = false
+
 @description('Cost Management scope (subscription or resource group)')
 param costManagementScope string = subscription().id
 
@@ -200,7 +203,8 @@ module eventHub 'modules/event-hub.bicep' = {
 }
 
 // Deploy EventHub to Application Insights Function App
-module eventHubFunctionApp 'modules/eventhub-function-app.bicep' = {
+// Choose between standard Consumption or Flex Consumption based on parameter
+module eventHubFunctionApp 'modules/eventhub-function-app${useFlexConsumptionForEventHub ? '-flex' : ''}.bicep' = {
   scope: rg
   name: 'deploy-eventhub-function-app'
   params: {
