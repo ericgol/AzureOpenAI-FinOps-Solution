@@ -1,5 +1,5 @@
 """
-EventHub to Application Insights Telemetry Forwarder - Simplified Version
+EventHub to Application Insights Telemetry Forwarder
 
 Uses Azure Functions' built-in logging integration with Application Insights.
 Custom properties are logged as structured JSON which Application Insights
@@ -45,7 +45,7 @@ def parse_telemetry_event(event_data: str) -> Optional[Dict[str, Any]]:
     arg_name="events",
     event_hub_name="%EventHubName%",
     connection="EventHubConnection",
-    consumer_group="finops-function-app"
+    consumer_group="finops-function-app",
     cardinality=func.Cardinality.MANY,
     data_type=func.DataType.STRING
 )
