@@ -14,15 +14,6 @@ import azure.functions as func
 
 # Initialize function app
 app = func.FunctionApp()
-@app.function_name(name="eventhub_to_appinsights")
-@app.event_hub_message_trigger(
-    arg_name="events",
-    event_hub_name="%EventHubName%",
-    connection="EventHubConnection",
-    consumer_group="finops-function-app",
-    cardinality=func.Cardinality.MANY,
-    data_type=func.DataType.STRING
-)
 
 def parse_telemetry_event(event_data: str) -> Optional[Dict[str, Any]]:
     """Parse and validate telemetry event from EventHub."""
@@ -47,6 +38,15 @@ def parse_telemetry_event(event_data: str) -> Optional[Dict[str, Any]]:
         logging.error(f"Unexpected error parsing event data: {e}")
         return None
 
+@app.function_name(name="eventhub_to_appinsights")
+@app.event_hub_message_trigger(
+    arg_name="events",
+    event_hub_name="%EventHubName%",
+    connection="EventHubConnection",
+    consumer_group="finops-function-app",
+    cardinality=func.Cardinality.MANY,
+    data_type=func.DataType.STRING
+)
 def eventhub_to_appinsights(events: List[func.EventHubEvent]) -> None:
     """
     EventHub-triggered function that forwards telemetry to Application Insights.
