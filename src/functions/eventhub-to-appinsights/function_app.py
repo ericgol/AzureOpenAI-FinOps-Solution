@@ -45,7 +45,7 @@ def parse_telemetry_event(event_data: str) -> Optional[Dict[str, Any]]:
     arg_name="events",
     event_hub_name="%EventHubName%",
     connection="EventHubConnection",
-    consumer_group="$Default",
+    consumer_group="finops-function-app"
     cardinality=func.Cardinality.MANY,
     data_type=func.DataType.STRING
 )
